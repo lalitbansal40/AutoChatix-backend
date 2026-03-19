@@ -10,6 +10,7 @@ import integrationRoutes from "./routes/integration.routes";
 import whatsappFlowRoutes from "./routes/whatsappFlow.route";
 import contactRoutes from "./routes/contact.route";
 import messageRoutes from "./routes/message.route";
+import contactAttributeRoutes from "./routes/contactAttribute.route";
 import { connectMongo } from "./database/mongodb"; // ✅ CHANGE: Mongo connect
 import cors from "cors";
 dotenv.config({ path: path.join(".env") });
@@ -27,13 +28,13 @@ app.use(
       req: Request & { rawBody?: string },
       _res: Response,
       buf: Buffer,
-      encoding: BufferEncoding
+      encoding: BufferEncoding,
     ) => {
       if (buf) {
         req.rawBody = buf.toString(encoding || "utf8");
       }
     },
-  })
+  }),
 );
 
 /* =========================
@@ -64,6 +65,7 @@ app.use("/webhook", webhookRoutes);
 app.use("/api/channel", channelRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/contact-attributes", contactAttributeRoutes);
 app.use("/api/message", messageRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/whatsappflow", whatsappFlowRoutes);
@@ -89,7 +91,7 @@ if (!isLambda) {
 
   app.listen(PORT, () => {
     console.info(
-      `✅ API pluggable up and running on: http://localhost:${PORT}`
+      `✅ API pluggable up and running on: http://localhost:${PORT}`,
     );
   });
 }
@@ -118,10 +120,7 @@ process.on("unhandledRejection", (error: unknown) => {
 ========================= */
 const serverHandler = serverless(app);
 
-export const handler = async (
-  event: any,
-  context: any
-): Promise<any> => {
+export const handler = async (event: any, context: any): Promise<any> => {
   context.callbackWaitsForEmptyEventLoop = false;
   return serverHandler(event, context);
 };

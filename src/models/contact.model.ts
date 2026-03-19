@@ -9,7 +9,10 @@ export interface ContactDocument extends Document {
   last_message?: string;
   last_message_at?: Date;
 
-  attributes: Record<string, any>;
+  attributes: {
+    type: mongoose.Schema.Types.Mixed;
+    default: {};
+  };
 
   createdAt: Date;
   updatedAt: Date;
