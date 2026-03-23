@@ -5,38 +5,46 @@ import {
   getTemplateById,
   getTemplates,
   updateTemplate,
+  uploadMediaController,
 } from "../controllers/template.controller";
 
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { subscriptionGuard } from "../middlewares/subcription.middleware";
+import { upload } from "../middlewares/upload.middleware";
 
 const router = Router();
 
 /**
- * 🔥 All routes protected + subscription required
+ * 🔐 Apply middlewares globally (BEST PRACTICE)
+ */
+router.use(authMiddleware, subscriptionGuard);
+
+/**
+ * 📁 MEDIA UPLOAD
+ */
+router.post(
+  "/upload-media/:channelId",
+  upload.single("file"),
+  uploadMediaController
+);
+
+/**
+ * 📄 TEMPLATE CRUD
  */
 
 // ✅ Get all templates
-router.get("/:channelId", authMiddleware, subscriptionGuard, getTemplates);
-router.get(
-  "/:channelId/:templateId",
-  authMiddleware,
-  subscriptionGuard,
-  getTemplateById,
-);
+router.get("/:channelId", getTemplates);
 
-// ✅ Create Marketing Template
-router.post(
-  "/marketing/:channelId",
-  authMiddleware,
-  subscriptionGuard,
-  createTemplate,
-);
+// ✅ Get single template
+router.get("/:channelId/:templateId", getTemplateById);
 
-// UPDATE (recreate)
+// ✅ Create template
+router.post("/:channelId", createTemplate);
+
+// ✅ Update template (recreate)
 router.put("/:channelId/:templateId", updateTemplate);
 
-// DELETE
+// ✅ Delete template
 router.delete("/:channelId/:templateId", deleteTemplate);
 
 export default router;
