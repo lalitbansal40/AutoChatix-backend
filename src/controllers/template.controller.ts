@@ -4,6 +4,8 @@ import { Channel } from "../models/channel.model";
 import { uploadToS3V2 } from "../services/s3v2.service";
 import FormData from "form-data";
 import { TemplateModel } from "../models/template.model";
+import Contact from "../models/contact.model";
+import Message from "../models/message.model";
 // 🔥 Helper: Get Channel
 const getChannel = async (channelId: string) => {
   const channel = await Channel.findById(channelId);
@@ -104,9 +106,9 @@ export const createTemplate = async (req: Request, res: Response) => {
             text: comp.text,
           };
 
-          console.log("comp :: ",JSON.stringify(comp))
+          console.log("comp :: ", JSON.stringify(comp));
 
-          console.log("comp.example :: ",comp.example)
+          console.log("comp.example :: ", comp.example);
 
           if (variables) {
             // ✅ fallback (agar frontend miss kare)
@@ -390,22 +392,40 @@ const uploadMediaForTemplate = async (fileUrl: string, accessToken: string) => {
 };
 
 export const sendTemplate = async (req: Request, res: Response) => {
+  let messageDoc: any = null;
+
   try {
     const { templateName, to, bodyParams } = req.body;
     const { channelId } = req.params;
 
+    if (!templateName || !to) {
+      return res.status(400).json({
+        message: "templateName and to are required",
+      });
+    }
+
     const channel = await getChannel(channelId);
 
-    // ✅ DB se template lao
-    const template = await TemplateModel.findOne({ name: templateName });
+    // ✅ FIND OR CREATE CONTACT
+    let contact = await Contact.findOne({
+      phone: to,
+      channel_id: channel._id,
+    });
 
-    if (!template) {
-      throw new Error("Template not found");
+    if (!contact) {
+      contact = await Contact.create({
+        phone: to,
+        channel_id: channel._id,
+      });
     }
+
+    // ✅ GET TEMPLATE
+    const template = await TemplateModel.findOne({ name: templateName });
+    if (!template) throw new Error("Template not found");
 
     const components: any[] = [];
 
-    // 🔥 HEADER auto attach
+    // 🔥 HEADER
     if (template.header_format && template.media_url) {
       components.push({
         type: "header",
@@ -420,7 +440,7 @@ export const sendTemplate = async (req: Request, res: Response) => {
       });
     }
 
-    // 🔥 BODY dynamic params
+    // 🔥 BODY
     if (bodyParams?.length) {
       components.push({
         type: "body",
@@ -431,28 +451,95 @@ export const sendTemplate = async (req: Request, res: Response) => {
       });
     }
 
+    // 🔥 META REQUEST PAYLOAD (IMPORTANT)
+    const metaPayload = {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: template.name,
+        language: { code: template.language },
+        components,
+      },
+    };
+
+    // 🔥 RENDER TEXT (for UI preview)
+    let renderedText = template.name;
+    const bodyComponent = template.components?.find(
+      (c: any) => c.type === "BODY"
+    );
+
+    if (bodyComponent?.text && bodyParams?.length) {
+      renderedText = bodyComponent.text.replace(/{{(\d+)}}/g, (_:any, i:any) => {
+        return bodyParams[i - 1] || `{{${i}}}`;
+      });
+    }
+
+    // ✅ SAVE MESSAGE (PENDING + REQUEST)
+    messageDoc = await Message.create({
+      channel_id: channel._id,
+      contact_id: contact._id,
+      direction: "OUT",
+      type: "template",
+      text: renderedText,
+      status: "PENDING",
+      payload: {
+        request: metaPayload, // 🔥 FULL REQUEST
+        templateData: template,
+      },
+    });
+
+    // ✅ SEND TO META
     const response = await axios.post(
       `https://graph.facebook.com/v19.0/${channel.phone_number_id}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to,
-        type: "template",
-        template: {
-          name: template.name,
-          language: { code: template.language },
-          components,
-        },
-      },
+      metaPayload,
       {
         headers: {
           Authorization: `Bearer ${channel.access_token}`,
           "Content-Type": "application/json",
         },
-      },
+      }
     );
 
-    res.json({ success: true, data: response.data });
+    const waMessageId = response.data.messages?.[0]?.id;
+
+    // ✅ UPDATE MESSAGE → SENT + RESPONSE
+    await Message.findByIdAndUpdate(messageDoc._id, {
+      status: "SENT",
+      wa_message_id: waMessageId,
+      $set: {
+        "payload.response": response.data, // 🔥 FULL RESPONSE
+      },
+    });
+
+    // 🔥 UPDATE CONTACT
+    await Contact.findByIdAndUpdate(contact._id, {
+      last_message: renderedText,
+      last_message_at: new Date(),
+      last_message_id: messageDoc._id,
+    });
+
+    return res.json({
+      success: true,
+      data: response.data,
+    });
+
   } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    console.error("SEND TEMPLATE ERROR:", err?.response?.data || err.message);
+
+    if (messageDoc?._id) {
+      await Message.findByIdAndUpdate(messageDoc._id, {
+        status: "FAILED",
+        error: err?.response?.data || err.message,
+        $set: {
+          "payload.error": err?.response?.data || err.message, // 🔥 SAVE ERROR ALSO
+        },
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: err?.response?.data || err.message,
+    });
   }
 };

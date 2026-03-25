@@ -48,7 +48,7 @@ export const register = async (req: Request, res: Response) => {
       phone,
       password: hashedPassword,
       name: user_name, // 👤 person
-      role: "admin",
+      role: "user",
       account_id: account._id,
       account_name: account_name,
     });
