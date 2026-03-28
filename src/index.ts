@@ -19,21 +19,7 @@ dotenv.config({ path: path.join(".env") });
 
 const app = express();
 
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false,
-  }),
-);
-
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "*");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  return res.sendStatus(200);
-});
+app.use(cors());
 
 const PORT = Number(process.env.PORT) || 5005;
 
@@ -147,7 +133,32 @@ const serverHandler = serverless(app);
 
 export const handler = async (event: any, context: any): Promise<any> => {
   context.callbackWaitsForEmptyEventLoop = false;
-  return serverHandler(event, context);
+
+  // 🔥 Handle OPTIONS BEFORE Express
+  if (event?.requestContext?.http?.method === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "content-type,authorization",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+      },
+      body: "",
+    };
+  }
+
+const response = (await serverHandler(event, context)) as any;
+
+  // 🔥 Ensure ALL responses have CORS
+  return {
+    ...response,
+    headers: {
+      ...(response.headers || {}),
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "content-type,authorization",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    },
+  };
 };
 
 /* =========================
