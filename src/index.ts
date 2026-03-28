@@ -15,7 +15,9 @@ import templatesRoutes from "./routes/template.routes";
 
 import { connectMongo } from "./database/mongodb"; // ✅ CHANGE: Mongo connect
 import cors from "cors";
-dotenv.config({ path: path.join(".env") });
+if (!process.env.LAMBDA_TASK_ROOT) {
+  dotenv.config();
+}
 
 const app = express();
 
