@@ -134,8 +134,9 @@ const serverHandler = serverless(app);
 export const handler = async (event: any, context: any): Promise<any> => {
   context.callbackWaitsForEmptyEventLoop = false;
 
-  // 🔥 Handle OPTIONS BEFORE Express
-  if (event?.requestContext?.http?.method === "OPTIONS") {
+  const method = event?.requestContext?.http?.method || event?.httpMethod;
+
+  if (method === "OPTIONS") {
     return {
       statusCode: 200,
       headers: {
@@ -147,7 +148,7 @@ export const handler = async (event: any, context: any): Promise<any> => {
     };
   }
 
-const response = (await serverHandler(event, context)) as any;
+  const response = (await serverHandler(event, context)) as any;
 
   // 🔥 Ensure ALL responses have CORS
   return {
