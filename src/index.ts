@@ -19,7 +19,12 @@ import cors from "cors";
 dotenv.config({ path: path.join(".env") });
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false
+}));
 const PORT = Number(process.env.PORT) || 5005;
 
 /* =========================
