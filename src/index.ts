@@ -18,6 +18,7 @@ import cors from "cors";
 dotenv.config({ path: path.join(".env") });
 
 const app = express();
+
 app.use(
   cors({
     origin: "*",
@@ -26,6 +27,14 @@ app.use(
     credentials: false,
   }),
 );
+
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  return res.sendStatus(200);
+});
+
 const PORT = Number(process.env.PORT) || 5005;
 
 /* =========================
@@ -71,13 +80,6 @@ app.use(async (req, res, next) => {
     console.error("❌ Mongo connection failed", err);
     res.status(500).json({ error: "Database connection failed" });
   }
-});
-
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "*");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  return res.sendStatus(200);
 });
 
 /* =========================
