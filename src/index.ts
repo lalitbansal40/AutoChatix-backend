@@ -1,5 +1,4 @@
 import express, { Request, Response } from "express";
-import path from "path";
 import dotenv from "dotenv";
 import serverless from "serverless-http";
 
@@ -13,20 +12,31 @@ import messageRoutes from "./routes/message.route";
 import contactAttributeRoutes from "./routes/contactAttribute.route";
 import templatesRoutes from "./routes/template.routes";
 
-import { connectMongo } from "./database/mongodb"; // ✅ CHANGE: Mongo connect
+import { connectMongo } from "./database/mongodb";
 import cors from "cors";
+
 if (!process.env.LAMBDA_TASK_ROOT) {
   dotenv.config();
 }
 
 const app = express();
 
-app.use(cors());
+/* =========================
+🔥 CORS FIX (STRONG)
+========================= */
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-const PORT = Number(process.env.PORT) || 5005;
+// 🔥 Preflight fix (IMPORTANT)
+app.options("*", cors());
 
 /* =========================
-   🔹 RAW BODY (WEBHOOK SAFE)
+🔹 RAW BODY
 ========================= */
 app.use(
   express.json({
@@ -34,33 +44,28 @@ app.use(
       req: Request & { rawBody?: string },
       _res: Response,
       buf: Buffer,
-      encoding: BufferEncoding,
+      encoding: BufferEncoding
     ) => {
       if (buf) {
         req.rawBody = buf.toString(encoding || "utf8");
       }
     },
-  }),
+  })
 );
 
 /* =========================
-   🔹 CHANGE: MongoDB middleware
-   - Ensures DB connected before any route
-   - Cold start: connect once
-   - Warm start: reuse
+🔹 Mongo Connection (Optimized)
 ========================= */
 let isDbConnected = false;
 
 app.use(async (req, res, next) => {
   try {
-    // 🔥 Skip preflight request
-    if (req.method === "OPTIONS") {
-      return next();
-    }
+    if (req.method === "OPTIONS") return next();
 
     if (!isDbConnected) {
       await connectMongo();
       isDbConnected = true;
+      console.log("✅ Mongo Connected");
     }
 
     next();
@@ -71,7 +76,7 @@ app.use(async (req, res, next) => {
 });
 
 /* =========================
-   🔹 ROUTES
+🔹 ROUTES
 ========================= */
 app.use("/webhook", webhookRoutes);
 app.use("/api/channel", channelRoutes);
@@ -84,67 +89,43 @@ app.use("/whatsappflow", whatsappFlowRoutes);
 app.use("/api/templates", templatesRoutes);
 
 /* =========================
-   🔹 HEALTH CHECK
+🔹 HEALTH CHECK
 ========================= */
 app.get("/", (_req: Request, res: Response) => {
-  res.send(`<pre>Nothing to see here. Checkout README.md to start.</pre>`);
+  res.send("Chatvexa API running 🚀");
 });
 
 /* =========================
-   🔹 LOCAL SERVER ONLY
-   ❌ DO NOT listen in Lambda
+🔹 LOCAL SERVER
 ========================= */
 const isLambda = Boolean(process.env.LAMBDA_TASK_ROOT);
 
 if (!isLambda) {
-  // 🔥 Force Mongo connect on local startup
   connectMongo()
-    .then(() => console.log("✅ MongoDB connected (startup)"))
+    .then(() => console.log("✅ MongoDB connected (local)"))
     .catch(console.error);
 
-  app.listen(PORT, () => {
-    console.info(
-      `✅ API pluggable up and running on: http://localhost:${PORT}`,
-    );
+  app.listen(5005, () => {
+    console.log("✅ Server running on http://localhost:5005");
   });
 }
-/* =========================
-   🔹 GLOBAL ERROR HANDLING
-========================= */
-process.on("uncaughtException", (error: Error) => {
-  console.error({
-    level: "error",
-    message: error?.message || "💀 UnCaught Exception 💀",
-    stack: error?.stack,
-  });
-});
-
-process.on("unhandledRejection", (error: unknown) => {
-  const err = error as Error;
-  console.error({
-    level: "error",
-    message: err?.message || "💀 Unhandled Rejection 💀",
-    stack: err?.stack,
-  });
-});
 
 /* =========================
-   🔹 LAMBDA HANDLER
+🔹 LAMBDA HANDLER
 ========================= */
 const serverHandler = serverless(app);
 
-export const handler = async (event: any, context: any): Promise<any> => {
+export const handler = async (event: any, context: any) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
-  const method = event?.requestContext?.http?.method || event?.httpMethod;
-
-  if (method === "OPTIONS") {
+  // 🔥 CRITICAL FIX: preflight
+  if (event.requestContext?.http?.method === "OPTIONS") {
     return {
       statusCode: 200,
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "content-type,authorization",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
       },
       body: "",
     };
@@ -152,19 +133,16 @@ export const handler = async (event: any, context: any): Promise<any> => {
 
   const response = (await serverHandler(event, context)) as any;
 
-  // 🔥 Ensure ALL responses have CORS
+  // 🔥 Force CORS in ALL responses
   return {
     ...response,
     headers: {
       ...(response.headers || {}),
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "content-type,authorization",
-      "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
     },
   };
 };
 
-/* =========================
-   🔹 EXPORT APP (TESTING)
-========================= */
 export const server = app;
