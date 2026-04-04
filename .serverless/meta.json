@@ -1,17 +1,47 @@
 {
-  "/Users/lalitbansal/Documents/myBoat/my-bot/serverless.yml": {
-    "versionFramework": "4.33.0",
-    "servicePath": "/Users/lalitbansal/Documents/myBoat/my-bot/serverless.yml",
+  "/Users/lalitbansal/Documents/chatvexa/chatvexa-backend/serverless.yml": {
+    "versionFramework": "4.33.3",
+    "servicePath": "/Users/lalitbansal/Documents/chatvexa/chatvexa-backend/serverless.yml",
     "serviceConfigFileName": "serverless.yml",
     "service": {
-      "service": "my-bot",
+      "service": "chatvexa-backend",
       "frameworkVersion": "4",
       "provider": {
         "name": "aws",
         "runtime": "nodejs18.x",
         "region": "ap-south-1",
         "stage": "prod",
-        "timeout": 30,
+        "httpApi": {
+          "cors": {
+            "allowedOrigins": [
+              "*"
+            ],
+            "allowedHeaders": [
+              "Content-Type",
+              "Authorization"
+            ],
+            "allowedMethods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "OPTIONS"
+            ]
+          }
+        },
+        "environment": {
+          "GOOGLE_CLIENT_EMAIL": "cake-arena@delivery-project-481106.iam.gserviceaccount.com",
+          "GOOGLE_MAPS_KEY": "AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4",
+          "GOOGLE_PRIVATE_KEY": "<REDACTED>",
+          "MONGODB_URI": "mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority",
+          "PASSPHRASE": "whatsapp",
+          "PORT": "5005",
+          "WHATSAPP_APP_SECRET": "<REDACTED>",
+          "WHATSAPP_VERIFY_TOKEN": "<REDACTED>",
+          "JWT_SECRET": "<REDACTED>",
+          "AWS_BUCKET": "chatvexa-media",
+          "WHATSAPP_BUCKET": "chatevexa-permanent-media"
+        },
         "deploymentBucket": "my-bot-serverless-deploy-302767540275",
         "versionFunctions": true,
         "deploymentBucketObject": {
@@ -25,7 +55,7 @@
             "ApiLogGroup": {
               "Type": "AWS::Logs::LogGroup",
               "Properties": {
-                "LogGroupName": "/aws/lambda/my-bot-prod-api"
+                "LogGroupName": "/aws/lambda/chatvexa-backend-prod-api"
               }
             },
             "IamRoleLambdaExecution": {
@@ -53,7 +83,7 @@
                       "Fn::Join": [
                         "-",
                         [
-                          "my-bot",
+                          "chatvexa-backend",
                           "prod",
                           "lambda"
                         ]
@@ -71,7 +101,7 @@
                           ],
                           "Resource": [
                             {
-                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*"
+                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*"
                             }
                           ]
                         },
@@ -82,7 +112,7 @@
                           ],
                           "Resource": [
                             {
-                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*:*"
+                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*:*"
                             }
                           ]
                         }
@@ -95,7 +125,7 @@
                   "Fn::Join": [
                     "-",
                     [
-                      "my-bot",
+                      "chatvexa-backend",
                       "prod",
                       {
                         "Ref": "AWS::Region"
@@ -111,15 +141,26 @@
               "Properties": {
                 "Code": {
                   "S3Bucket": "my-bot-serverless-deploy-302767540275",
-                  "S3Key": "serverless/my-bot/prod/1773604887412-2026-03-15T20:01:27.412Z/my-bot.zip"
+                  "S3Key": "serverless/chatvexa-backend/prod/1775304749357-2026-04-04T12:12:29.357Z/chatvexa-backend.zip"
                 },
                 "Handler": "src/index.handler",
                 "Runtime": "nodejs18.x",
-                "FunctionName": "my-bot-prod-api",
+                "FunctionName": "chatvexa-backend-prod-api",
                 "MemorySize": 1024,
-                "Timeout": 30,
+                "Timeout": 60,
                 "Environment": {
                   "Variables": {
+                    "GOOGLE_CLIENT_EMAIL": "cake-arena@delivery-project-481106.iam.gserviceaccount.com",
+                    "GOOGLE_MAPS_KEY": "AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4",
+                    "GOOGLE_PRIVATE_KEY": "<REDACTED>",
+                    "MONGODB_URI": "mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority",
+                    "PASSPHRASE": "whatsapp",
+                    "PORT": "5005",
+                    "WHATSAPP_APP_SECRET": "<REDACTED>",
+                    "WHATSAPP_VERIFY_TOKEN": "<REDACTED>",
+                    "JWT_SECRET": "<REDACTED>",
+                    "AWS_BUCKET": "chatvexa-media",
+                    "WHATSAPP_BUCKET": "chatevexa-permanent-media",
                     "NODE_OPTIONS": "--enable-source-maps"
                   }
                 },
@@ -134,21 +175,38 @@
                 "ApiLogGroup"
               ]
             },
-            "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8": {
+            "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U": {
               "Type": "AWS::Lambda::Version",
               "DeletionPolicy": "Retain",
               "Properties": {
                 "FunctionName": {
                   "Ref": "ApiLambdaFunction"
                 },
-                "CodeSha256": "PVYt52IPEdVH+FJjSKjXhFpVzk7vGBf4sxFEb5T0hQo="
+                "CodeSha256": "dVdV6p5UYMWC+4vMFyHA4MaZXxU6Q4dGGIz4RXfeQ4g="
               }
             },
             "HttpApi": {
               "Type": "AWS::ApiGatewayV2::Api",
               "Properties": {
-                "Name": "prod-my-bot",
-                "ProtocolType": "HTTP"
+                "Name": "prod-chatvexa-backend",
+                "ProtocolType": "HTTP",
+                "CorsConfiguration": {
+                  "AllowCredentials": "<REDACTED>",
+                  "AllowHeaders": [
+                    "Content-Type",
+                    "Authorization"
+                  ],
+                  "AllowMethods": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "DELETE",
+                    "OPTIONS"
+                  ],
+                  "AllowOrigins": [
+                    "*"
+                  ]
+                }
               }
             },
             "HttpApiStage": {
@@ -218,13 +276,13 @@
                 "TimeoutInMillis": 30000
               }
             },
-            "HttpApiRouteDefault": {
+            "HttpApiRouteAnyProxyVar": {
               "Type": "AWS::ApiGatewayV2::Route",
               "Properties": {
                 "ApiId": {
                   "Ref": "HttpApi"
                 },
-                "RouteKey": "$default",
+                "RouteKey": "ANY /{proxy+}",
                 "Target": {
                   "Fn::Join": [
                     "/",
@@ -244,16 +302,16 @@
             "ServerlessDeploymentBucketName": {
               "Value": "my-bot-serverless-deploy-302767540275",
               "Export": {
-                "Name": "sls-my-bot-prod-ServerlessDeploymentBucketName"
+                "Name": "sls-chatvexa-backend-prod-ServerlessDeploymentBucketName"
               }
             },
             "ApiLambdaFunctionQualifiedArn": {
               "Description": "Current Lambda function version",
               "Value": {
-                "Ref": "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8"
+                "Ref": "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U"
               },
               "Export": {
-                "Name": "sls-my-bot-prod-ApiLambdaFunctionQualifiedArn"
+                "Name": "sls-chatvexa-backend-prod-ApiLambdaFunctionQualifiedArn"
               }
             },
             "HttpApiId": {
@@ -262,7 +320,7 @@
                 "Ref": "HttpApi"
               },
               "Export": {
-                "Name": "sls-my-bot-prod-HttpApiId"
+                "Name": "sls-chatvexa-backend-prod-HttpApiId"
               }
             },
             "HttpApiUrl": {
@@ -287,7 +345,7 @@
                 ]
               },
               "Export": {
-                "Name": "sls-my-bot-prod-HttpApiUrl"
+                "Name": "sls-chatvexa-backend-prod-HttpApiUrl"
               }
             }
           }
@@ -297,22 +355,27 @@
       "functions": {
         "api": {
           "handler": "src/index.handler",
+          "memorySize": 1024,
+          "timeout": 60,
           "events": [
             {
-              "httpApi": "*",
-              "resolvedMethod": "ANY"
+              "httpApi": {
+                "path": "/{proxy+}",
+                "method": "ANY"
+              },
+              "resolvedMethod": "ANY",
+              "resolvedPath": "/{proxy+}"
             }
           ],
-          "name": "my-bot-prod-api",
+          "name": "chatvexa-backend-prod-api",
           "environment": {
             "NODE_OPTIONS": "--enable-source-maps"
           },
           "package": {},
           "memory": 1024,
-          "timeout": 30,
           "runtime": "nodejs18.x",
           "vpc": {},
-          "versionLogicalId": "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8"
+          "versionLogicalId": "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U"
         }
       },
       "plugins": [
@@ -324,7 +387,37 @@
       "runtime": "nodejs18.x",
       "region": "ap-south-1",
       "stage": "prod",
-      "timeout": 30,
+      "httpApi": {
+        "cors": {
+          "allowedOrigins": [
+            "*"
+          ],
+          "allowedHeaders": [
+            "Content-Type",
+            "Authorization"
+          ],
+          "allowedMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+          ]
+        }
+      },
+      "environment": {
+        "GOOGLE_CLIENT_EMAIL": "cake-arena@delivery-project-481106.iam.gserviceaccount.com",
+        "GOOGLE_MAPS_KEY": "AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4",
+        "GOOGLE_PRIVATE_KEY": "<REDACTED>",
+        "MONGODB_URI": "mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority",
+        "PASSPHRASE": "whatsapp",
+        "PORT": "5005",
+        "WHATSAPP_APP_SECRET": "<REDACTED>",
+        "WHATSAPP_VERIFY_TOKEN": "<REDACTED>",
+        "JWT_SECRET": "<REDACTED>",
+        "AWS_BUCKET": "chatvexa-media",
+        "WHATSAPP_BUCKET": "chatevexa-permanent-media"
+      },
       "deploymentBucket": "my-bot-serverless-deploy-302767540275",
       "versionFunctions": true,
       "deploymentBucketObject": {
@@ -338,7 +431,7 @@
           "ApiLogGroup": {
             "Type": "AWS::Logs::LogGroup",
             "Properties": {
-              "LogGroupName": "/aws/lambda/my-bot-prod-api"
+              "LogGroupName": "/aws/lambda/chatvexa-backend-prod-api"
             }
           },
           "IamRoleLambdaExecution": {
@@ -366,7 +459,7 @@
                     "Fn::Join": [
                       "-",
                       [
-                        "my-bot",
+                        "chatvexa-backend",
                         "prod",
                         "lambda"
                       ]
@@ -384,7 +477,7 @@
                         ],
                         "Resource": [
                           {
-                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*"
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*"
                           }
                         ]
                       },
@@ -395,7 +488,7 @@
                         ],
                         "Resource": [
                           {
-                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*:*"
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*:*"
                           }
                         ]
                       }
@@ -408,7 +501,7 @@
                 "Fn::Join": [
                   "-",
                   [
-                    "my-bot",
+                    "chatvexa-backend",
                     "prod",
                     {
                       "Ref": "AWS::Region"
@@ -424,15 +517,26 @@
             "Properties": {
               "Code": {
                 "S3Bucket": "my-bot-serverless-deploy-302767540275",
-                "S3Key": "serverless/my-bot/prod/1773604887412-2026-03-15T20:01:27.412Z/my-bot.zip"
+                "S3Key": "serverless/chatvexa-backend/prod/1775304749357-2026-04-04T12:12:29.357Z/chatvexa-backend.zip"
               },
               "Handler": "src/index.handler",
               "Runtime": "nodejs18.x",
-              "FunctionName": "my-bot-prod-api",
+              "FunctionName": "chatvexa-backend-prod-api",
               "MemorySize": 1024,
-              "Timeout": 30,
+              "Timeout": 60,
               "Environment": {
                 "Variables": {
+                  "GOOGLE_CLIENT_EMAIL": "cake-arena@delivery-project-481106.iam.gserviceaccount.com",
+                  "GOOGLE_MAPS_KEY": "AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4",
+                  "GOOGLE_PRIVATE_KEY": "<REDACTED>",
+                  "MONGODB_URI": "mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority",
+                  "PASSPHRASE": "whatsapp",
+                  "PORT": "5005",
+                  "WHATSAPP_APP_SECRET": "<REDACTED>",
+                  "WHATSAPP_VERIFY_TOKEN": "<REDACTED>",
+                  "JWT_SECRET": "<REDACTED>",
+                  "AWS_BUCKET": "chatvexa-media",
+                  "WHATSAPP_BUCKET": "chatevexa-permanent-media",
                   "NODE_OPTIONS": "--enable-source-maps"
                 }
               },
@@ -447,21 +551,38 @@
               "ApiLogGroup"
             ]
           },
-          "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8": {
+          "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ApiLambdaFunction"
               },
-              "CodeSha256": "PVYt52IPEdVH+FJjSKjXhFpVzk7vGBf4sxFEb5T0hQo="
+              "CodeSha256": "dVdV6p5UYMWC+4vMFyHA4MaZXxU6Q4dGGIz4RXfeQ4g="
             }
           },
           "HttpApi": {
             "Type": "AWS::ApiGatewayV2::Api",
             "Properties": {
-              "Name": "prod-my-bot",
-              "ProtocolType": "HTTP"
+              "Name": "prod-chatvexa-backend",
+              "ProtocolType": "HTTP",
+              "CorsConfiguration": {
+                "AllowCredentials": "<REDACTED>",
+                "AllowHeaders": [
+                  "Content-Type",
+                  "Authorization"
+                ],
+                "AllowMethods": [
+                  "GET",
+                  "POST",
+                  "PUT",
+                  "DELETE",
+                  "OPTIONS"
+                ],
+                "AllowOrigins": [
+                  "*"
+                ]
+              }
             }
           },
           "HttpApiStage": {
@@ -531,13 +652,13 @@
               "TimeoutInMillis": 30000
             }
           },
-          "HttpApiRouteDefault": {
+          "HttpApiRouteAnyProxyVar": {
             "Type": "AWS::ApiGatewayV2::Route",
             "Properties": {
               "ApiId": {
                 "Ref": "HttpApi"
               },
-              "RouteKey": "$default",
+              "RouteKey": "ANY /{proxy+}",
               "Target": {
                 "Fn::Join": [
                   "/",
@@ -557,16 +678,16 @@
           "ServerlessDeploymentBucketName": {
             "Value": "my-bot-serverless-deploy-302767540275",
             "Export": {
-              "Name": "sls-my-bot-prod-ServerlessDeploymentBucketName"
+              "Name": "sls-chatvexa-backend-prod-ServerlessDeploymentBucketName"
             }
           },
           "ApiLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8"
+              "Ref": "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U"
             },
             "Export": {
-              "Name": "sls-my-bot-prod-ApiLambdaFunctionQualifiedArn"
+              "Name": "sls-chatvexa-backend-prod-ApiLambdaFunctionQualifiedArn"
             }
           },
           "HttpApiId": {
@@ -575,7 +696,7 @@
               "Ref": "HttpApi"
             },
             "Export": {
-              "Name": "sls-my-bot-prod-HttpApiId"
+              "Name": "sls-chatvexa-backend-prod-HttpApiId"
             }
           },
           "HttpApiUrl": {
@@ -600,7 +721,7 @@
               ]
             },
             "Export": {
-              "Name": "sls-my-bot-prod-HttpApiUrl"
+              "Name": "sls-chatvexa-backend-prod-HttpApiUrl"
             }
           }
         }
@@ -616,7 +737,7 @@
       "serviceProvider": null,
       "instanceParameters": null
     },
-    "serviceRawFile": "service: my-bot\n\nframeworkVersion: \"4\"\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: ap-south-1\n  stage: dev\n  timeout: 30\n\n  deploymentBucket:\n    name: my-bot-serverless-deploy-302767540275\n    blockPublicAccess: true\n\nfunctions:\n  api:\n    handler: src/index.handler\n    events:\n      - httpApi: \"*\"\n\nplugins:\n  - serverless-offline\n",
+    "serviceRawFile": "service: chatvexa-backend\n\nframeworkVersion: \"4\"\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: ap-south-1\n  stage: ${opt:stage, 'dev'}\n\n  httpApi:\n    cors:\n      allowedOrigins:\n        - \"*\"\n      allowedHeaders:\n        - Content-Type\n        - Authorization\n      allowedMethods:\n        - GET\n        - POST\n        - PUT\n        - DELETE\n        - OPTIONS\n\n  environment:\n    GOOGLE_CLIENT_EMAIL: cake-arena@delivery-project-481106.iam.gserviceaccount.com\n    GOOGLE_MAPS_KEY: AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4\n    GOOGLE_PRIVATE_KEY: -----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDXi0ITlGLEQftm\\nG8J6Upd6kdySiLGmZIAkPefZcqn+vEgw7yk+djt7302wEv62ZzTTbf+7i7fbh/fb\\nNBsvF+DNS44E6HkR2N30lOIIBnfTTg3xk+Cm3Hn3YZjmjEriPx7y4yuTxaX98Kse\\nzDKUmf91MZRUT0inNmV944ttebBWPbwMxzE4fkrsdLMiaJdkIKzTJN3H7jNbiQeC\\nSb/MZZqg47wpa13u/zJhhad9NJQo1NHrfk4JswQyU2kZwcFdg8lJMDXoS1c9J3KF\\nHluTVpD4mnV2o2GLAJTZ5cv38ZruKhGj3CraJacWtyICDRnwpIoWbLVy27mnl33p\\ndCjYF8phAgMBAAECggEAFGrcl3423OBjMAjxIyUvtCyc+ER6j4h1mvlCPRbfg4HS\\nVNBS19fbSqCce1FRT3X3Sw/gaaOShvkaQWluKcfZQ5kkmtJqpYYlgEWaI6h5MUrz\\nhy662ROJeiWEllIzxbq0880RE65lSujBTOmK4Qi1aiSIKHRaLXy5oHMtgfFFAuYp\\nmwGA7sqrHcnSUPGcGGpKGmDxAp4QX2veqJmT797WHdhEJGjNyfs4ufrXyb4bs8WO\\nfmerf8bPB+QpUy9mmlGJdMBWb29gi2vIXm322yIrSj0XUH+bSUnklrioSc9jEIX5\\nnq7OfSVRzL13XBTPjX2+RoY+Sj7l5Oxs3chTodiRAQKBgQD29GfEtaxZeNq+FnWP\\nCb6AiPGN8WPLZZfnNqrIw0rO0SPwJ3LFB9wf+oLfdm5YD+/gJFAlk1Wpaosy7zLA\\nj3U918wkRmLuYUjkJRkvHNZRaoGtxIIvnjCl+injoFJRTbyaprb5I0fTqcBqRdJO\\nswdYD1qclkNiFbw/jvtyTvgdPwKBgQDfcFO3DjfNeVX+f+lCAGNjhSBeNO3pYk2T\\nkzLmz5aXKjUohBOO5CBSMBnNHZ+9/8UuUNKytkT9zZatSTWHAIZ4tZsHvrL3lr4R\\n6afsv12skbW/N8hL8zJUdPYCodzG/b7cZ681LiHUACDGhE4bo/5cFBSJqpEUHPou\\nGPATzo8QXwKBgFguyecaIGMKnsGF75CWICpxvB+9dK8qpeVwRefOpKXZVIXq8Daf\\nKeFZaOY2ugxEFJnrHZttUwdd/jq/41WTZIAi0MibQbRxlL+y551FJNqJt6i/JOWw\\nDRsXi2G22+4gXhqzMV8hVAKm+Qh5yjFECHlPckG7/m/F5ySi//K/dCWtAoGAAUdM\\nQ1Tiftt94Xnr5MPJzcz6NW/KGLbGSNzjwqxXaUAFk9jFn+CwSqgZzbGos1aeUziF\\nLB6c4HLntNAhbUdUfaZUX8P4lDAZoFKc8l7Z813WE2UHUV/v3snYioVQlRbom6xA\\nNWaxLNxfU6N4KvJSR0aaI3uFXv8Xc2ITJZnd+bMCgYEAhbCEYz4hE8GC31LGvedP\\nMHBV1PGwoT/dxpPQs86DI+dwznXXBIgAszQBFTMUg58av7RlYKK1rkZ0AWhG+Uf+\\njApgZ9FrEjfePAI+n+yqWh9kV1nXE4m51EEXm8d/bD7B+U61TsjxmyxiWUD7tB3l\\n/05Nfh2nPha3tGEQWcNQ118=\\n-----END PRIVATE KEY-----\\n\n    MONGODB_URI: mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority\n    PASSPHRASE: whatsapp\n    PORT: 5005\n    WHATSAPP_APP_SECRET: lalit\n    WHATSAPP_VERIFY_TOKEN: my_whatsapp_webhook_secret_123\n    JWT_SECRET: lalit\n    AWS_BUCKET: chatvexa-media\n    WHATSAPP_BUCKET: chatevexa-permanent-media\n  deploymentBucket:\n    name: my-bot-serverless-deploy-302767540275\n    blockPublicAccess: true\n\nfunctions:\n  api:\n    handler: src/index.handler\n    memorySize: 1024\n    timeout: 60\n    events:\n      - httpApi:\n          path: /{proxy+}\n          method: ANY\n\nplugins:\n  - serverless-offline",
     "command": [
       "deploy"
     ],
@@ -628,34 +749,34 @@
     "userId": "jRlDKzj64ML0n5W4sv",
     "userName": "mybot2004",
     "serviceProviderAwsAccountId": "302767540275",
-    "serviceProviderAwsCfStackName": "my-bot-prod",
-    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:ap-south-1:302767540275:stack/my-bot-prod/c3c5fb90-20a9-11f1-ba84-02e26556eab7",
-    "serviceProviderAwsCfStackCreated": "2026-03-15T20:01:33.210Z",
+    "serviceProviderAwsCfStackName": "chatvexa-backend-prod",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:ap-south-1:302767540275:stack/chatvexa-backend-prod/90871f90-301f-11f1-b1fb-0a0b1d3ff58b",
+    "serviceProviderAwsCfStackCreated": "2026-04-04T12:12:35.297Z",
     "serviceProviderAwsCfStackUpdated": null,
     "serviceProviderAwsCfStackStatus": "CREATE_COMPLETE",
     "serviceProviderAwsCfStackOutputs": [
       {
         "OutputKey": "ApiLambdaFunctionQualifiedArn",
-        "OutputValue": "arn:aws:lambda:ap-south-1:302767540275:function:my-bot-prod-api:2",
+        "OutputValue": "arn:aws:lambda:ap-south-1:302767540275:function:chatvexa-backend-prod-api:1",
         "Description": "Current Lambda function version",
-        "ExportName": "sls-my-bot-prod-ApiLambdaFunctionQualifiedArn"
+        "ExportName": "sls-chatvexa-backend-prod-ApiLambdaFunctionQualifiedArn"
       },
       {
         "OutputKey": "HttpApiId",
-        "OutputValue": "3e6ufn8rt0",
+        "OutputValue": "zlpgr9brta",
         "Description": "Id of the HTTP API",
-        "ExportName": "sls-my-bot-prod-HttpApiId"
+        "ExportName": "sls-chatvexa-backend-prod-HttpApiId"
       },
       {
         "OutputKey": "ServerlessDeploymentBucketName",
         "OutputValue": "my-bot-serverless-deploy-302767540275",
-        "ExportName": "sls-my-bot-prod-ServerlessDeploymentBucketName"
+        "ExportName": "sls-chatvexa-backend-prod-ServerlessDeploymentBucketName"
       },
       {
         "OutputKey": "HttpApiUrl",
-        "OutputValue": "https://3e6ufn8rt0.execute-api.ap-south-1.amazonaws.com",
+        "OutputValue": "https://zlpgr9brta.execute-api.ap-south-1.amazonaws.com",
         "Description": "URL of the HTTP API",
-        "ExportName": "sls-my-bot-prod-HttpApiUrl"
+        "ExportName": "sls-chatvexa-backend-prod-HttpApiUrl"
       }
     ],
     "compiledCloudFormationTemplate": {
@@ -665,7 +786,7 @@
         "ApiLogGroup": {
           "Type": "AWS::Logs::LogGroup",
           "Properties": {
-            "LogGroupName": "/aws/lambda/my-bot-prod-api"
+            "LogGroupName": "/aws/lambda/chatvexa-backend-prod-api"
           }
         },
         "IamRoleLambdaExecution": {
@@ -693,7 +814,7 @@
                   "Fn::Join": [
                     "-",
                     [
-                      "my-bot",
+                      "chatvexa-backend",
                       "prod",
                       "lambda"
                     ]
@@ -711,7 +832,7 @@
                       ],
                       "Resource": [
                         {
-                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*"
+                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*"
                         }
                       ]
                     },
@@ -722,7 +843,7 @@
                       ],
                       "Resource": [
                         {
-                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*:*"
+                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*:*"
                         }
                       ]
                     }
@@ -735,7 +856,7 @@
               "Fn::Join": [
                 "-",
                 [
-                  "my-bot",
+                  "chatvexa-backend",
                   "prod",
                   {
                     "Ref": "AWS::Region"
@@ -751,15 +872,26 @@
           "Properties": {
             "Code": {
               "S3Bucket": "my-bot-serverless-deploy-302767540275",
-              "S3Key": "serverless/my-bot/prod/1773604887412-2026-03-15T20:01:27.412Z/my-bot.zip"
+              "S3Key": "serverless/chatvexa-backend/prod/1775304749357-2026-04-04T12:12:29.357Z/chatvexa-backend.zip"
             },
             "Handler": "src/index.handler",
             "Runtime": "nodejs18.x",
-            "FunctionName": "my-bot-prod-api",
+            "FunctionName": "chatvexa-backend-prod-api",
             "MemorySize": 1024,
-            "Timeout": 30,
+            "Timeout": 60,
             "Environment": {
               "Variables": {
+                "GOOGLE_CLIENT_EMAIL": "cake-arena@delivery-project-481106.iam.gserviceaccount.com",
+                "GOOGLE_MAPS_KEY": "AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4",
+                "GOOGLE_PRIVATE_KEY": "<REDACTED>",
+                "MONGODB_URI": "mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority",
+                "PASSPHRASE": "whatsapp",
+                "PORT": "5005",
+                "WHATSAPP_APP_SECRET": "<REDACTED>",
+                "WHATSAPP_VERIFY_TOKEN": "<REDACTED>",
+                "JWT_SECRET": "<REDACTED>",
+                "AWS_BUCKET": "chatvexa-media",
+                "WHATSAPP_BUCKET": "chatevexa-permanent-media",
                 "NODE_OPTIONS": "--enable-source-maps"
               }
             },
@@ -774,21 +906,37 @@
             "ApiLogGroup"
           ]
         },
-        "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8": {
+        "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U": {
           "Type": "AWS::Lambda::Version",
           "DeletionPolicy": "Retain",
           "Properties": {
             "FunctionName": {
               "Ref": "ApiLambdaFunction"
             },
-            "CodeSha256": "PVYt52IPEdVH+FJjSKjXhFpVzk7vGBf4sxFEb5T0hQo="
+            "CodeSha256": "dVdV6p5UYMWC+4vMFyHA4MaZXxU6Q4dGGIz4RXfeQ4g="
           }
         },
         "HttpApi": {
           "Type": "AWS::ApiGatewayV2::Api",
           "Properties": {
-            "Name": "prod-my-bot",
-            "ProtocolType": "HTTP"
+            "Name": "prod-chatvexa-backend",
+            "ProtocolType": "HTTP",
+            "CorsConfiguration": {
+              "AllowHeaders": [
+                "Content-Type",
+                "Authorization"
+              ],
+              "AllowMethods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+              ],
+              "AllowOrigins": [
+                "*"
+              ]
+            }
           }
         },
         "HttpApiStage": {
@@ -858,13 +1006,13 @@
             "TimeoutInMillis": 30000
           }
         },
-        "HttpApiRouteDefault": {
+        "HttpApiRouteAnyProxyVar": {
           "Type": "AWS::ApiGatewayV2::Route",
           "Properties": {
             "ApiId": {
               "Ref": "HttpApi"
             },
-            "RouteKey": "$default",
+            "RouteKey": "ANY /{proxy+}",
             "Target": {
               "Fn::Join": [
                 "/",
@@ -884,16 +1032,16 @@
         "ServerlessDeploymentBucketName": {
           "Value": "my-bot-serverless-deploy-302767540275",
           "Export": {
-            "Name": "sls-my-bot-prod-ServerlessDeploymentBucketName"
+            "Name": "sls-chatvexa-backend-prod-ServerlessDeploymentBucketName"
           }
         },
         "ApiLambdaFunctionQualifiedArn": {
           "Description": "Current Lambda function version",
           "Value": {
-            "Ref": "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8"
+            "Ref": "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U"
           },
           "Export": {
-            "Name": "sls-my-bot-prod-ApiLambdaFunctionQualifiedArn"
+            "Name": "sls-chatvexa-backend-prod-ApiLambdaFunctionQualifiedArn"
           }
         },
         "HttpApiId": {
@@ -902,7 +1050,7 @@
             "Ref": "HttpApi"
           },
           "Export": {
-            "Name": "sls-my-bot-prod-HttpApiId"
+            "Name": "sls-chatvexa-backend-prod-HttpApiId"
           }
         },
         "HttpApiUrl": {
@@ -927,7 +1075,7 @@
             ]
           },
           "Export": {
-            "Name": "sls-my-bot-prod-HttpApiUrl"
+            "Name": "sls-chatvexa-backend-prod-HttpApiUrl"
           }
         }
       }

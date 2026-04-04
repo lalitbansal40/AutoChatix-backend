@@ -5,7 +5,7 @@
     "ApiLogGroup": {
       "Type": "AWS::Logs::LogGroup",
       "Properties": {
-        "LogGroupName": "/aws/lambda/my-bot-prod-api"
+        "LogGroupName": "/aws/lambda/chatvexa-backend-prod-api"
       }
     },
     "IamRoleLambdaExecution": {
@@ -33,7 +33,7 @@
               "Fn::Join": [
                 "-",
                 [
-                  "my-bot",
+                  "chatvexa-backend",
                   "prod",
                   "lambda"
                 ]
@@ -51,7 +51,7 @@
                   ],
                   "Resource": [
                     {
-                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*"
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*"
                     }
                   ]
                 },
@@ -62,7 +62,7 @@
                   ],
                   "Resource": [
                     {
-                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/my-bot-prod*:*:*"
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/chatvexa-backend-prod*:*:*"
                     }
                   ]
                 }
@@ -75,7 +75,7 @@
           "Fn::Join": [
             "-",
             [
-              "my-bot",
+              "chatvexa-backend",
               "prod",
               {
                 "Ref": "AWS::Region"
@@ -91,15 +91,26 @@
       "Properties": {
         "Code": {
           "S3Bucket": "my-bot-serverless-deploy-302767540275",
-          "S3Key": "serverless/my-bot/prod/1773604887412-2026-03-15T20:01:27.412Z/my-bot.zip"
+          "S3Key": "serverless/chatvexa-backend/prod/1775304749357-2026-04-04T12:12:29.357Z/chatvexa-backend.zip"
         },
         "Handler": "src/index.handler",
         "Runtime": "nodejs18.x",
-        "FunctionName": "my-bot-prod-api",
+        "FunctionName": "chatvexa-backend-prod-api",
         "MemorySize": 1024,
-        "Timeout": 30,
+        "Timeout": 60,
         "Environment": {
           "Variables": {
+            "GOOGLE_CLIENT_EMAIL": "cake-arena@delivery-project-481106.iam.gserviceaccount.com",
+            "GOOGLE_MAPS_KEY": "AIzaSyA4dao39ydwVuDPKAY4fCdB-wodNQ4qou4",
+            "GOOGLE_PRIVATE_KEY": "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDXi0ITlGLEQftm\\nG8J6Upd6kdySiLGmZIAkPefZcqn+vEgw7yk+djt7302wEv62ZzTTbf+7i7fbh/fb\\nNBsvF+DNS44E6HkR2N30lOIIBnfTTg3xk+Cm3Hn3YZjmjEriPx7y4yuTxaX98Kse\\nzDKUmf91MZRUT0inNmV944ttebBWPbwMxzE4fkrsdLMiaJdkIKzTJN3H7jNbiQeC\\nSb/MZZqg47wpa13u/zJhhad9NJQo1NHrfk4JswQyU2kZwcFdg8lJMDXoS1c9J3KF\\nHluTVpD4mnV2o2GLAJTZ5cv38ZruKhGj3CraJacWtyICDRnwpIoWbLVy27mnl33p\\ndCjYF8phAgMBAAECggEAFGrcl3423OBjMAjxIyUvtCyc+ER6j4h1mvlCPRbfg4HS\\nVNBS19fbSqCce1FRT3X3Sw/gaaOShvkaQWluKcfZQ5kkmtJqpYYlgEWaI6h5MUrz\\nhy662ROJeiWEllIzxbq0880RE65lSujBTOmK4Qi1aiSIKHRaLXy5oHMtgfFFAuYp\\nmwGA7sqrHcnSUPGcGGpKGmDxAp4QX2veqJmT797WHdhEJGjNyfs4ufrXyb4bs8WO\\nfmerf8bPB+QpUy9mmlGJdMBWb29gi2vIXm322yIrSj0XUH+bSUnklrioSc9jEIX5\\nnq7OfSVRzL13XBTPjX2+RoY+Sj7l5Oxs3chTodiRAQKBgQD29GfEtaxZeNq+FnWP\\nCb6AiPGN8WPLZZfnNqrIw0rO0SPwJ3LFB9wf+oLfdm5YD+/gJFAlk1Wpaosy7zLA\\nj3U918wkRmLuYUjkJRkvHNZRaoGtxIIvnjCl+injoFJRTbyaprb5I0fTqcBqRdJO\\nswdYD1qclkNiFbw/jvtyTvgdPwKBgQDfcFO3DjfNeVX+f+lCAGNjhSBeNO3pYk2T\\nkzLmz5aXKjUohBOO5CBSMBnNHZ+9/8UuUNKytkT9zZatSTWHAIZ4tZsHvrL3lr4R\\n6afsv12skbW/N8hL8zJUdPYCodzG/b7cZ681LiHUACDGhE4bo/5cFBSJqpEUHPou\\nGPATzo8QXwKBgFguyecaIGMKnsGF75CWICpxvB+9dK8qpeVwRefOpKXZVIXq8Daf\\nKeFZaOY2ugxEFJnrHZttUwdd/jq/41WTZIAi0MibQbRxlL+y551FJNqJt6i/JOWw\\nDRsXi2G22+4gXhqzMV8hVAKm+Qh5yjFECHlPckG7/m/F5ySi//K/dCWtAoGAAUdM\\nQ1Tiftt94Xnr5MPJzcz6NW/KGLbGSNzjwqxXaUAFk9jFn+CwSqgZzbGos1aeUziF\\nLB6c4HLntNAhbUdUfaZUX8P4lDAZoFKc8l7Z813WE2UHUV/v3snYioVQlRbom6xA\\nNWaxLNxfU6N4KvJSR0aaI3uFXv8Xc2ITJZnd+bMCgYEAhbCEYz4hE8GC31LGvedP\\nMHBV1PGwoT/dxpPQs86DI+dwznXXBIgAszQBFTMUg58av7RlYKK1rkZ0AWhG+Uf+\\njApgZ9FrEjfePAI+n+yqWh9kV1nXE4m51EEXm8d/bD7B+U61TsjxmyxiWUD7tB3l\\n/05Nfh2nPha3tGEQWcNQ118=\\n-----END PRIVATE KEY-----\\n",
+            "MONGODB_URI": "mongodb+srv://myBot:978408aA%40%23@cluster0.aseqq5r.mongodb.net/mybot?retryWrites=true&w=majority",
+            "PASSPHRASE": "whatsapp",
+            "PORT": "5005",
+            "WHATSAPP_APP_SECRET": "lalit",
+            "WHATSAPP_VERIFY_TOKEN": "my_whatsapp_webhook_secret_123",
+            "JWT_SECRET": "lalit",
+            "AWS_BUCKET": "chatvexa-media",
+            "WHATSAPP_BUCKET": "chatevexa-permanent-media",
             "NODE_OPTIONS": "--enable-source-maps"
           }
         },
@@ -114,21 +125,37 @@
         "ApiLogGroup"
       ]
     },
-    "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8": {
+    "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ApiLambdaFunction"
         },
-        "CodeSha256": "PVYt52IPEdVH+FJjSKjXhFpVzk7vGBf4sxFEb5T0hQo="
+        "CodeSha256": "dVdV6p5UYMWC+4vMFyHA4MaZXxU6Q4dGGIz4RXfeQ4g="
       }
     },
     "HttpApi": {
       "Type": "AWS::ApiGatewayV2::Api",
       "Properties": {
-        "Name": "prod-my-bot",
-        "ProtocolType": "HTTP"
+        "Name": "prod-chatvexa-backend",
+        "ProtocolType": "HTTP",
+        "CorsConfiguration": {
+          "AllowHeaders": [
+            "Content-Type",
+            "Authorization"
+          ],
+          "AllowMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+          ],
+          "AllowOrigins": [
+            "*"
+          ]
+        }
       }
     },
     "HttpApiStage": {
@@ -198,13 +225,13 @@
         "TimeoutInMillis": 30000
       }
     },
-    "HttpApiRouteDefault": {
+    "HttpApiRouteAnyProxyVar": {
       "Type": "AWS::ApiGatewayV2::Route",
       "Properties": {
         "ApiId": {
           "Ref": "HttpApi"
         },
-        "RouteKey": "$default",
+        "RouteKey": "ANY /{proxy+}",
         "Target": {
           "Fn::Join": [
             "/",
@@ -224,16 +251,16 @@
     "ServerlessDeploymentBucketName": {
       "Value": "my-bot-serverless-deploy-302767540275",
       "Export": {
-        "Name": "sls-my-bot-prod-ServerlessDeploymentBucketName"
+        "Name": "sls-chatvexa-backend-prod-ServerlessDeploymentBucketName"
       }
     },
     "ApiLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ApiLambdaVersionCTfCcWfHOgnHKpnVPDyJ9n4j7st2CmQJ30dDEL8"
+        "Ref": "ApiLambdaVersionBC4CZenITPPy98Wt8h2s7Tz7aBqLMcVMtTo4tSwiB5U"
       },
       "Export": {
-        "Name": "sls-my-bot-prod-ApiLambdaFunctionQualifiedArn"
+        "Name": "sls-chatvexa-backend-prod-ApiLambdaFunctionQualifiedArn"
       }
     },
     "HttpApiId": {
@@ -242,7 +269,7 @@
         "Ref": "HttpApi"
       },
       "Export": {
-        "Name": "sls-my-bot-prod-HttpApiId"
+        "Name": "sls-chatvexa-backend-prod-HttpApiId"
       }
     },
     "HttpApiUrl": {
@@ -267,7 +294,7 @@
         ]
       },
       "Export": {
-        "Name": "sls-my-bot-prod-HttpApiUrl"
+        "Name": "sls-chatvexa-backend-prod-HttpApiUrl"
       }
     }
   }
