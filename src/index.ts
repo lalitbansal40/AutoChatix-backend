@@ -12,6 +12,8 @@ import messageRoutes from "./routes/message.route";
 import contactAttributeRoutes from "./routes/contactAttribute.route";
 import templatesRoutes from "./routes/template.routes";
 import automationRoutes from "./routes/automation.route";
+import mediaRoutes from "./routes/media.routes";
+
 
 
 import { connectMongo } from "./database/mongodb";
@@ -80,6 +82,8 @@ app.use("/api/integrations", integrationRoutes);
 app.use("/whatsappflow", whatsappFlowRoutes);
 app.use("/api/templates", templatesRoutes);
 app.use("/api/automations", automationRoutes);
+app.use("/api/media", mediaRoutes);
+
 
 
 /* =========================

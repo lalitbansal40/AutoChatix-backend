@@ -8,7 +8,7 @@ export const uploadToS3V2 = async (buffer: Buffer, mimeType: string) => {
 
   const key = `whatsapp/${Date.now()}-${uuidv4()}.${extension}`; // ✅ FIX
 
-  await s3.send(
+  const reponse = await s3.send(
     new PutObjectCommand({
       Bucket: process.env.WHATSAPP_BUCKET!,
       Key: key,
@@ -16,6 +16,10 @@ export const uploadToS3V2 = async (buffer: Buffer, mimeType: string) => {
       ContentType: mimeType,
     }),
   );
+
+  console.log("response :: ",JSON.stringify(reponse))
+
+  console.log("{process.env.WHATSAPP_BUCKET",process.env.WHATSAPP_BUCKET)
 
   return `https://${process.env.WHATSAPP_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 };

@@ -7,6 +7,8 @@ import { TemplateModel } from "../models/template.model";
 import Contact from "../models/contact.model";
 import Message from "../models/message.model";
 import { parseCSV } from "../helpers/csvparser";
+import { AuthRequest } from "../types/auth.types";
+import mongoose from "mongoose";
 // 🔥 Helper: Get Channel
 const getChannel = async (channelId: string) => {
   const channel = await Channel.findById(channelId);
@@ -1010,3 +1012,50 @@ export const syncTemplates = async (req: Request, res: Response) => {
   }
 };
 
+export const getAllWhatsappFlows = async (req: AuthRequest, res: Response) => {
+  try {
+    const account_id = req.user?.account_id;
+
+    // 🔥 get channel from DB
+    const channel = await Channel.find({
+      account_id: new mongoose.Types.ObjectId(account_id),
+    });
+
+    if (!channel) {
+      return res.status(404).json({
+        success: false,
+        message: "Channel not found",
+      });
+    }
+
+    const { waba_id, access_token } = channel[0];
+
+    // 🔥 call Meta API
+    const response = await axios.get(
+      `https://graph.facebook.com/v19.0/${waba_id}/flows`,
+      {
+        params: {
+          fields: "id,name,status",
+        },
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      },
+    );
+
+    return res.json({
+      success: true,
+      data: response.data.data,
+    });
+  } catch (error: any) {
+    console.error(
+      "❌ getAllWhatsappFlows error:",
+      error?.response?.data || error,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch flows",
+    });
+  }
+};

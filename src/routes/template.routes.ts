@@ -8,7 +8,8 @@ import {
   sendTemplate,
   updateTemplate,
   uploadMediaController,
-  syncTemplates, // 🔥 ADD THIS
+  syncTemplates,
+  getAllWhatsappFlows, // 🔥 ADD THIS
 } from "../controllers/template.controller";
 
 import { authMiddleware } from "../middlewares/auth.middleware";
@@ -33,7 +34,7 @@ router.post("/sync/:channelId", syncTemplates);
 router.post(
   "/upload-media/:channelId",
   upload.single("file"),
-  uploadMediaController
+  uploadMediaController,
 );
 
 /**
@@ -41,28 +42,30 @@ router.post(
  */
 
 // ✅ Get all templates
-router.get("/:channelId", getTemplates);
+router.get("/whatsapp-flow", authMiddleware, getAllWhatsappFlows);
+router.get("/:channelId", authMiddleware, getTemplates);
 
 // ✅ Get single template
-router.get("/:channelId/:templateId", getTemplateById);
+router.get("/:channelId/:templateId", authMiddleware, getTemplateById);
 
 // ✅ Create template
-router.post("/:channelId", createTemplate);
+router.post("/:channelId", authMiddleware, createTemplate);
 
 // ✅ Send template
-router.post("/send-template/:channelId", sendTemplate);
+router.post("/send-template/:channelId", authMiddleware, sendTemplate);
 
 // ✅ Bulk send template
 router.post(
   "/send-bulk/:channelId",
   upload.single("file"),
-  sendBulkTemplate
+  authMiddleware,
+  sendBulkTemplate,
 );
 
 // ✅ Update template (recreate)
-router.put("/:channelId/:templateId", updateTemplate);
+router.put("/:channelId/:templateId", authMiddleware, updateTemplate);
 
 // ✅ Delete template
-router.delete("/:channelId/:templateId", deleteTemplate);
+router.delete("/:channelId/:templateId", authMiddleware, deleteTemplate);
 
 export default router;
