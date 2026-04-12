@@ -42,7 +42,7 @@ router.post(
  */
 
 // ✅ Get all templates
-router.get("/whatsapp-flow", authMiddleware, getAllWhatsappFlows);
+router.get("/whatsapp-flows", authMiddleware, getAllWhatsappFlows);
 router.get("/:channelId", authMiddleware, getTemplates);
 
 // ✅ Get single template

@@ -90,7 +90,7 @@ app.use("/api/media", mediaRoutes);
 🔹 HEALTH CHECK
 ========================= */
 app.get("/", (_req: Request, res: Response) => {
-  res.send("Chatvexa API running 🚀");
+  res.send("AutoChatix API running 🚀");
 });
 
 /* =========================

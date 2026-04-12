@@ -61,7 +61,9 @@ class CakeArena {
     ========================= */
 
     private async handleWelcomeScreen(data: any) {
+
         const cakes = await this.googleSheet.getAll("cake data");
+
 
         const availableCakes = cakes
             .filter(cake => cake.instock === "TRUE")

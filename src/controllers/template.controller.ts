@@ -1015,10 +1015,11 @@ export const syncTemplates = async (req: Request, res: Response) => {
 export const getAllWhatsappFlows = async (req: AuthRequest, res: Response) => {
   try {
     const account_id = req.user?.account_id;
+    const { status } = req.query; // 🔥 NEW
 
-    // 🔥 get channel from DB
-    const channel = await Channel.find({
-      account_id: new mongoose.Types.ObjectId(account_id),
+    const channel = await Channel.findOne({
+      account_id: account_id,
+      is_active: true,
     });
 
     if (!channel) {
@@ -1028,14 +1029,14 @@ export const getAllWhatsappFlows = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { waba_id, access_token } = channel[0];
+    const { waba_id, access_token } = channel;
 
-    // 🔥 call Meta API
     const response = await axios.get(
       `https://graph.facebook.com/v19.0/${waba_id}/flows`,
       {
         params: {
           fields: "id,name,status",
+          ...(status && { status }), // 🔥 dynamic filter
         },
         headers: {
           Authorization: `Bearer ${access_token}`,

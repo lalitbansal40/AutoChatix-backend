@@ -1,4 +1,4 @@
-service: chatvexa-backend
+service: AutoChatix-backend
 
 frameworkVersion: "4"
 
@@ -32,8 +32,8 @@ provider:
     WHATSAPP_APP_SECRET: lalit
     WHATSAPP_VERIFY_TOKEN: my_whatsapp_webhook_secret_123
     JWT_SECRET: lalit
-    AWS_BUCKET: chatvexa-media
-    WHATSAPP_BUCKET: chatevexa-permanent-media
+    AWS_BUCKET: autochatix-chat-media
+    WHATSAPP_BUCKET: autochatix-media-assets
   deploymentBucket:
     name: my-bot-serverless-deploy-302767540275
     blockPublicAccess: true
