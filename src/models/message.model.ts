@@ -48,7 +48,7 @@ export interface MessageDocument extends Document {
 
 const MessageSchema = new Schema<MessageDocument>(
   {
-    channel_id: { type: Schema.Types.ObjectId, ref: "Channel", index: true },
+    channel_id: { type: Schema.Types.ObjectId, ref: "Channel" },
     contact_id: { type: Schema.Types.ObjectId, ref: "Contact", index: true },
 
     direction: { type: String, enum: ["IN", "OUT"], required: true },
@@ -65,7 +65,7 @@ const MessageSchema = new Schema<MessageDocument>(
       index: true,
     },
 
-    wa_message_id: { type: String, index: true },
+    wa_message_id: { type: String },
     text: { type: String },
 
     media: {
