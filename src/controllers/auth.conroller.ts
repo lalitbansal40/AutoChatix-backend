@@ -7,6 +7,8 @@ import dotenv from "dotenv";
 import path from "path";
 import bcrypt from "bcryptjs";
 import { AuthRequest } from "../types/auth.types";
+import { generateOTP, verifyOTP } from "../services/otp.service";
+import { sendOTPEmail } from "../services/email.service";
 
 dotenv.config({ path: path.join(".env") });
 
@@ -78,70 +80,57 @@ export const register = async (req: Request, res: Response) => {
    LOGIN
 ===================================================== */
 export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, phone, password } = req.body;
+  const { email, password } = req.body;
 
-    if ((!email && !phone) || !password) {
-      return res.status(400).json({
-        message: "Email or phone and password are required",
-      });
-    }
+  const user = await User.findOne({ email }).select("+password");
 
-    const conditions: any[] = [];
-    if (email) conditions.push({ email });
-    if (phone) conditions.push({ phone });
+  if (!user) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
 
-    // 🔐 include password explicitly
-    const user = await User.findOne({ $or: conditions }).select("+password");
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
 
-    if (!user) {
-      return res.status(401).json({
-        message: "Invalid credentials",
-      });
-    }
+  // 🔥 Generate OTP
+  const otp = generateOTP(email);
 
-    // ❌ check user active
-    if (!user.is_active) {
-      return res.status(403).json({
-        message: "Account is disabled",
-      });
-    }
+  // 📩 Send email
+  await sendOTPEmail(email, otp);
 
-    // 🔐 password match
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        message: "Invalid credentials",
-      });
-    }
+  return res.json({
+    message: "OTP sent to email",
+  });
+};
 
-    // 🔑 JWT with account + role
-    const token = jwt.sign(
-      {
-        user_id: user._id,
-        account_id: user.account_id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "7d" },
-    );
+export const verifyLoginOTP = async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
 
-    return res.json({
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        account_id: user.account_id,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({
-      message: "Something went wrong",
+  const isValid = verifyOTP(email, otp);
+
+  if (!isValid) {
+    return res.status(400).json({
+      message: "Invalid or expired OTP",
     });
   }
+
+  const user = await User.findOne({ email });
+
+  const token = jwt.sign(
+    {
+      user_id: user._id,
+      account_id: user.account_id,
+      role: user.role,
+    },
+    process.env.JWT_SECRET!,
+    { expiresIn: "7d" }
+  );
+
+  return res.json({
+    token,
+    message: "Login successful",
+  });
 };
 
 /* =====================================================
