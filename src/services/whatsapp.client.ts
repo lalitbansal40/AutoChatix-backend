@@ -191,6 +191,38 @@ export const createWhatsAppClient = (
       });
 
       try {
+
+        console.log("/messages", {
+          messaging_product: "whatsapp",
+          to,
+          type: "interactive",
+          interactive: {
+            type: "list",
+
+            header: payload.header
+              ? {
+                type: "text",
+                text: payload.header,
+              }
+              : undefined,
+
+            body: {
+              text: payload.body,
+            },
+
+            action: {
+              button: payload.buttonText || "Select",
+              sections: payload.sections.map((section) => ({
+                title: section.title,
+                rows: section.rows.map((row) => ({
+                  id: String(row.id),
+                  title: row.title.substring(0, 24),
+                  description: row.description?.substring(0, 72),
+                })),
+              })),
+            },
+          },
+        });
         const res = await api.post("/messages", {
           messaging_product: "whatsapp",
           to,
@@ -779,6 +811,7 @@ export const createWhatsAppClient = (
     },
 
     async sendUrlButton(to, bodyText, buttonText, url) {
+      console.log(to, bodyText, buttonText, url)
       const msg = await Message.create({
         channel_id: channel._id,
         contact_id: contact._id,

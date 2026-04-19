@@ -11,6 +11,7 @@ import { sendTypingIndicator } from "../helpers/whatsapp.helper";
 import { downloadWhatsAppMedia } from "../helpers/downloadMedia";
 import { uploadToS3 } from "../services/s3.service";
 import axios from "axios";
+import { getNextNodeId } from "../engine/grapht";
 dotenv.config({ path: path.join(".env") });
 
 export const verifyWebhook = async (
@@ -48,18 +49,16 @@ export const receiveMessage = async (req: Request, res: Response) => {
 
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
 
-    // ✅ STATUS UPDATE (DELIVERED / READ)
+    // ✅ STATUS UPDATE
     if (value?.statuses) {
       const statusObj = value.statuses[0];
 
       const updateData: any = {
-        status: statusObj.status.toUpperCase(), // SENT / DELIVERED / READ / FAILED
+        status: statusObj.status.toUpperCase(),
       };
 
-      // ✅ FAILED CASE
       if (statusObj.status === "failed") {
         const error = statusObj.errors?.[0];
-
         updateData.error = {
           code: error?.code,
           message: error?.message,
@@ -68,7 +67,6 @@ export const receiveMessage = async (req: Request, res: Response) => {
       }
 
       await Message.updateOne({ wa_message_id: statusObj.id }, updateData);
-
       return res.sendStatus(200);
     }
 
@@ -82,12 +80,6 @@ export const receiveMessage = async (req: Request, res: Response) => {
       phone_number_id: phoneNumberId,
       is_active: true,
     });
-    console.log(
-      "Channel found:",
-      !!channel,
-      "for phone_number_id:",
-      phoneNumberId,
-    );
 
     if (!channel) return res.sendStatus(200);
 
@@ -95,223 +87,116 @@ export const receiveMessage = async (req: Request, res: Response) => {
     const contact = await Contact.findOneAndUpdate(
       { channel_id: channel._id, phone: from },
       { $set: { name: value.contacts?.[0]?.profile?.name } },
-      { upsert: true, new: true },
+      { upsert: true, new: true }
     );
 
-    // 🚫 DUPLICATE CHECK
+    // 🚫 DUPLICATE MESSAGE
     const existing = await Message.findOne({
       wa_message_id: message.id,
     });
+    if (existing) return res.sendStatus(200);
 
-    if (existing) {
-      return res.sendStatus(200);
-    }
-
-    // 🔥 MESSAGE PARSING
-    let text: string | null = null;
-    let media: any = null;
-
-    // TEXT
-    if (message.type === "text") {
-      text = message.text?.body || null;
-    }
-    //  else if (message.type === "interactive") {
-    //   text = message.interactive?.button_reply?.title || "interactive";
-
-    //   // 🔥 IMPORTANT (flow / address capture)
-    //   if (message.interactive?.nfm_reply?.response_json) {
-    //     try {
-    //       const parsed = JSON.parse(
-    //         message.interactive.nfm_reply.response_json,
-    //       );
-
-    //       // 🔥 SAVE DIRECTLY IN CONTACT
-    //       await Contact.updateOne(
-    //         { _id: contact._id },
-    //         {
-    //           $set: {
-    //             "attributes.address": {
-    //               text:
-    //                 parsed?.formatted_address ||
-    //                 parsed?.address ||
-    //                 parsed?.full_address ||
-    //                 "",
-    //               latitude: parsed?.latitude,
-    //               longitude: parsed?.longitude,
-    //             },
-    //             "attributes.addressData": {
-    //               text:
-    //                 parsed?.formatted_address ||
-    //                 parsed?.address ||
-    //                 parsed?.full_address ||
-    //                 "",
-    //               latitude: parsed?.latitude,
-    //               longitude: parsed?.longitude,
-    //             },
-    //           },
-    //         },
-    //       );
-    //     } catch (e) {
-    //       console.error("❌ flow parse error", e);
-    //     }
-    //   }
-    // }
-
-    // MEDIA TYPES
-    else if (["image", "video", "audio", "document"].includes(message.type)) {
-      const mediaObj = message[message.type];
-
-      try {
-        console.log("Processing media:", message.type);
-
-        // ✅ UNIVERSAL CAPTION HANDLING
-        text = extractCaption(mediaObj);
-
-        // 🔥 STEP 1: Get real media URL
-        const metaRes = await axios.get(
-          `https://graph.facebook.com/v19.0/${mediaObj.id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${channel.access_token}`,
-            },
-          },
-        );
-
-        const realUrl = metaRes.data.url;
-
-        // 🔥 STEP 2: Download
-        const buffer = await downloadWhatsAppMedia(
-          realUrl,
-          channel.access_token,
-        );
-
-        // 🔥 STEP 3: Upload to S3
-        const s3Url = await uploadToS3(buffer, mediaObj.mime_type);
-
-        // 🔥 SAVE MEDIA
-        media = {
-          url: s3Url,
-          mime_type: mediaObj.mime_type,
-          filename: mediaObj.filename || null,
-        };
-      } catch (err) {
-        console.error("❌ Media processing failed:", err);
-
-        // fallback
-        media = {
-          url: mediaObj.url,
-          mime_type: mediaObj.mime_type,
-          filename: mediaObj.filename || null,
-        };
-
-        // fallback caption
-        text = extractCaption(mediaObj);
-      }
-    }
-
-    // CONTACT SHARE
-    else if (message.type === "contacts") {
-      const c = message.contacts[0];
-
-      text = c?.name?.formatted_name || "Shared Contact";
-
-      await Contact.updateOne(
-        { _id: contact._id },
-        {
-          $set: {
-            "attributes.shared_contact": c,
-          },
-        },
-      );
-    }
-
-    // LOCATION
-    else if (message.type === "location") {
-      const loc = message.location;
-
-      text = `Location: ${loc.latitude}, ${loc.longitude}`;
-
-      await Contact.updateOne(
-        { _id: contact._id },
-        {
-          $set: {
-            "attributes.delivery_address": loc,
-          },
-        },
-      );
-    }
-
-    // SAVE MESSAGE
-    const msg = await Message.create({
-      channel_id: channel._id,
-      contact_id: contact._id,
-      direction: "IN",
-      type: message.type,
-      status: "SENT",
-      wa_message_id: message.id,
-      reply_to: message.context?.id || null,
-      text,
-      media,
-      payload: message,
-      is_read: false,
-    });
-
-    // UPDATE CONTACT
-    await Contact.updateOne(
-      { _id: contact._id },
-      {
-        $inc: { unread_count: 1 },
-        $set: {
-          last_message_id: msg._id,
-          last_message: text || media?.url || "Media",
-          last_message_at: new Date(),
-        },
-      },
-    );
-
-    const automation = await Automation.findOne({
-      channel_id: channel._id,
-      trigger: "new_message_received",
-      status: "active",
-    });
-    if (!automation) return res.sendStatus(200);
-
-    // 🧠 AUTOMATION SESSION
+    // 🧠 SESSION
     const session = {
       contact_id: contact._id,
       current_node: contact.attributes?.current_node || "start",
       waiting_for: contact.attributes?.waiting_for || null,
       data: contact.attributes || {},
     };
-    const whatsapp = createWhatsAppClient(channel, contact);
 
-    await sendTypingIndicator(
-      channel.phone_number_id,
-      channel.access_token,
-      message.id,
-    );
 
-    // ✅ PRODUCT TRACKING
-    if (message.interactive?.button_reply?.id) {
-      const btnId = message.interactive.button_reply.id;
+    const automation = await Automation.findOne({
+      channel_id: channel._id,
+      trigger: "new_message_received",
+      status: "active",
+    });
 
-      await Contact.updateOne(
-        { _id: contact._id },
-        {
-          $set: {
-            "attributes.product_id": btnId,
-          },
-        },
-      );
+    if (!automation) {
+      console.log("⚠️ No automation found");
+      return res.sendStatus(200);
     }
 
-    // ✅ AUTO RESET AFTER ORDER COMPLETE
+    // ✅ HANDLE ASK_INPUT RESPONSE
+    if (
+      session.waiting_for === "input" &&
+      message.text?.body
+    ) {
+      console.log("✅ INPUT RECEIVED:", message.text.body);
+
+      const value = message.text.body;
+      const key = session.data?.save_key;
+
+      if (key) {
+        // ✅ SAVE TO CONTACT
+        await Contact.updateOne(
+          { _id: contact._id },
+          {
+            $set: {
+              [`attributes.${key}`]: value,
+            },
+          }
+        );
+
+        // ✅ SAVE TO SESSION
+        session.data[key] = value;
+      }
+
+      // 🔥 RESET WAITING
+      session.waiting_for = null;
+
+      // 🔥 MOVE NEXT
+      const nextNodeId = getNextNodeId(
+        automation.edges,
+        session.current_node
+      );
+
+      if (nextNodeId) {
+        session.current_node = nextNodeId;
+      }
+    }
+    const whatsapp = createWhatsAppClient(channel, contact);
+
+    // 🔥 INPUT DETECT (ONE TIME ONLY)
+    const inputId =
+      message.interactive?.button_reply?.id ||
+      message.interactive?.list_reply?.id;
+
+    // ✅ SAVE INPUT
+    if (inputId) {
+      await Contact.updateOne(
+        { _id: contact._id },
+        { $set: { "attributes.product_id": inputId } }
+      );
+
+      // 🔥 CRITICAL (missing)
+      session.data.product_id = inputId;
+    }
+
+    // 🔥 HANDLE INPUT → MOVE NEXT NODE
+    if (session.waiting_for && inputId) {
+      console.log("✅ INPUT RECEIVED → MOVE NEXT:", inputId);
+
+      session.waiting_for = null;
+
+      const nextNode = getNextNodeId(
+        automation.edges,
+        session.current_node,
+        inputId
+      );
+
+      if (nextNode) {
+        session.current_node = nextNode;
+      }
+    }
+
+    // ✅ RESET FLOW
     if (contact.attributes?.current_node === "done") {
       session.current_node = "start";
       session.waiting_for = null;
       session.data = {};
     }
 
+    // 🚀 RUN ENGINE
     await runAutomation({
       automation,
       session,
@@ -322,14 +207,11 @@ export const receiveMessage = async (req: Request, res: Response) => {
 
         const updatedAttributes = {
           ...freshContact?.attributes,
-
           ...(updates.data || {}),
-
           current_node:
             updates.current_node !== undefined
               ? updates.current_node
               : freshContact?.attributes?.current_node,
-
           waiting_for:
             updates.waiting_for !== undefined
               ? updates.waiting_for
@@ -340,7 +222,7 @@ export const receiveMessage = async (req: Request, res: Response) => {
           { _id: contact._id },
           {
             $set: { attributes: updatedAttributes },
-          },
+          }
         );
 
         session.current_node = updatedAttributes.current_node;

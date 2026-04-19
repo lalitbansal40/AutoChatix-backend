@@ -14,7 +14,7 @@ import { makeGoogleSheetPayload } from "../utils/makeGoogleSheetPayload";
 import { buildBorzoPayload } from "../utils/borzopayload";
 import { BorzoApiClient } from "../services/borzo.service";
 import { RazorpayService } from "../services/razorpay.service";
-
+import axios from "axios";
 const getFreshSession = async (contactId: string) => {
   const freshContact = await Contact.findById(contactId).lean();
 
@@ -46,6 +46,8 @@ interface Context {
     | "address_message"
     | "list"
     | "set_contact_attribute"
+    | "call_to_action"
+    | "api_request"
     | null;
     data?: Record<string, any>;
   }) => Promise<void>;
@@ -140,7 +142,6 @@ export const executeNode = async ({
       let text = node.message || "";
       text = interpolate(text, context);
 
-      console.log("node :: ", node);
 
       // =========================
       // 🔥 MEDIA + BUTTONS
@@ -188,96 +189,137 @@ export const executeNode = async ({
     }
 
     case "ask_location": {
+      console.log("ask_location", node)
       const saveKey = node.save_to || "location";
+      console.log("ask_location", saveKey)
+      const contact = await Contact.findById(session.contact_id).lean();
+
+      const context = {
+        ...session.data,
+        contact,
+        ...contact?.attributes,
+      };
+
       let structuredAddress: any = null;
 
       /* =========================
-         1️⃣ LOCATION BUTTON
+         🔥 STEP 1: STRICT INPUT CHECK
+         ONLY accept input IF already waiting_for = location
+      ========================= */
+      const isLocationInput =
+        session.waiting_for === "location" &&
+        (message.location ||
+          (message.text?.body &&
+            !message.interactive?.button_reply &&
+            !message.interactive?.nfm_reply));
+
+      /* =========================
+         ❌ FIRST TIME → ASK LOCATION
+      ========================= */
+      if (!isLocationInput) {
+        await whatsapp.requestLocation(
+          from,
+          interpolate(
+            node.message || "📍 Please share your pickup location",
+            context
+          )
+        );
+
+        await updateSession({
+          current_node: node.id,
+          waiting_for: "location",
+        });
+
+        return; // 🔥 DO NOT PROCESS ANYTHING
+      }
+
+      /* =========================
+         📍 LOCATION BUTTON INPUT
       ========================= */
       if (message.location) {
         const addressText = await reverseGeocode(
           message.location.latitude,
-          message.location.longitude,
+          message.location.longitude
         );
+
         structuredAddress = await getStructuredAddress(addressText);
-      } else if (
-        /* =========================
-         2️⃣ TYPED ADDRESS
-      ========================= */
-        message.text?.body &&
-        !message.interactive?.button_reply &&
-        !message.interactive?.nfm_reply
-      ) {
-        structuredAddress = await getStructuredAddress(message.text.body);
       }
 
       /* =========================
-         3️⃣ NO INPUT YET → ASK
+         ✍️ TEXT ADDRESS INPUT
+         (ONLY when actually waiting_for = location)
       ========================= */
-      if (!structuredAddress) {
-        await whatsapp.requestLocation(from, node.message!);
+      else if (message.text?.body) {
+        const text = message.text.body.toLowerCase();
+
+        // 🔥 ignore date/time like input
+        const isProbablyDate =
+          text.includes("am") ||
+          text.includes("pm") ||
+          /\d{1,2}/.test(text);
+
+        if (!isProbablyDate) {
+          structuredAddress = await getStructuredAddress(message.text.body);
+        }
+      }
+
+      /* =========================
+         ❌ INVALID / NO ADDRESS
+      ========================= */
+      if (!structuredAddress || typeof structuredAddress === "string") {
+        await whatsapp.sendText(
+          from,
+          typeof structuredAddress === "string"
+            ? structuredAddress
+            : "❌ Location not detected. Please send your live location or a valid address."
+        );
 
         await updateSession({
           current_node: node.id,
           waiting_for: "location",
         });
+
         return;
       }
 
       /* =========================
-         4️⃣ INVALID ADDRESS
+         ✅ SAVE LOCATION
       ========================= */
-      if (typeof structuredAddress === "string") {
-        await whatsapp.sendText(from, structuredAddress);
+      const savedLocation = {
+        text: structuredAddress.fullAddress,
+        latitude: structuredAddress.latitude,
+        longitude: structuredAddress.longitude,
+        structured: structuredAddress,
+        googleMapsUrl: structuredAddress.googleMapsUrl,
+        displayAddress: structuredAddress.displayAddress,
+      };
 
-        await updateSession({
-          current_node: node.id,
-          waiting_for: "location",
-        });
-        return;
-      }
-
-      /* =========================
-         5️⃣ SAVE TO CONTACT
-      ========================= */
       await Contact.updateOne(
         { phone: from, channel_id: automation.channel_id },
         {
           $set: {
-            [`attributes.${saveKey}`]: {
-              text: structuredAddress.fullAddress,
-              latitude: structuredAddress.latitude,
-              longitude: structuredAddress.longitude,
-              structured: structuredAddress,
-              googleMapsUrl: structuredAddress.googleMapsUrl,
-              displayAddress: structuredAddress.displayAddress
-            },
+            [`attributes.${saveKey}`]: savedLocation,
           },
         },
-        { upsert: true },
+        { upsert: true }
       );
 
       /* =========================
-         6️⃣ SAVE TO SESSION (for {{address}})
+         ✅ SAVE SESSION
       ========================= */
       await updateSession({
         data: {
           ...session.data,
+          [saveKey]: savedLocation,
           address: structuredAddress.fullAddress,
-          [`${saveKey}`]: {
-            text: structuredAddress.fullAddress,
-            latitude: structuredAddress.latitude,
-            longitude: structuredAddress.longitude,
-            structured: structuredAddress,
-            googleMapsUrl: structuredAddress.googleMapsUrl,
-            displayAddress: structuredAddress.displayAddress
-          },
         },
+        waiting_for: null,
       });
 
+      console.log("📍 Location saved:", savedLocation);
+
       /* =========================
-         7️⃣ MOVE TO CONFIRM NODE
-         ❗ DO NOT SET waiting_for HERE
+         🚀 MOVE NEXT NODE
       ========================= */
       const nextNodeId = getNextNodeId(automation.edges, node.id);
       if (!nextNodeId) return;
@@ -741,10 +783,27 @@ export const executeNode = async ({
         ...contact?.attributes,
       };
 
-      // 🔥 interpolate body
+      // 🔥🔥🔥 THIS IS THE FIX
+      if (message.interactive?.list_reply?.id) {
+        const selectedId = message.interactive.list_reply.id;
+
+        console.log("✅ LIST SELECTED:", selectedId);
+
+        // 🔥 ensure latest session data
+        await updateSession({
+          data: {
+            ...session.data,
+            last_list_id: selectedId,
+          },
+          waiting_for: null, // 🔥 unlock
+        });
+
+        return moveNext();
+      }
+
+      // 👇 NORMAL FLOW (SEND LIST)
       const bodyText = interpolate(node.body || "Please choose", context);
 
-      // 🔥 build sections dynamically
       const sections = (node.sections || []).map((section: any) => ({
         title: section.title,
         rows: section.rows.map((row: any) => ({
@@ -756,7 +815,6 @@ export const executeNode = async ({
         })),
       }));
 
-      // 🚀 SEND LIST
       await whatsapp.sendList(from, {
         header: node.header,
         body: bodyText,
@@ -766,7 +824,7 @@ export const executeNode = async ({
 
       await updateSession({
         current_node: node.id,
-        waiting_for: "button", // list bhi button reply deta hai
+        waiting_for: "list",
       });
 
       return;
@@ -783,18 +841,12 @@ export const executeNode = async ({
         return;
       }
 
-      /* =========================
-         🔥 BUILD CONTEXT (IMPORTANT)
-      ========================= */
       const context = {
         ...session.data,
         contact,
         ...contact.attributes,
       };
 
-      /* =========================
-         🔥 INTERPOLATE VALUE
-      ========================= */
       const key = node.config.key;
       let value = node.config.value;
 
@@ -802,21 +854,15 @@ export const executeNode = async ({
         value = interpolate(value, context);
       }
 
-      /* =========================
-         ✅ SAVE IN CONTACT
-      ========================= */
       await Contact.updateOne(
         { _id: session.contact_id },
         {
           $set: {
             [`attributes.${key}`]: value,
           },
-        },
+        }
       );
 
-      /* =========================
-         ✅ SAVE IN SESSION
-      ========================= */
       await updateSession({
         data: {
           ...session.data,
@@ -826,14 +872,144 @@ export const executeNode = async ({
 
       console.log(`✅ Saved attribute ${key} =`, value);
 
-      /* =========================
-         🔥 MOVE NEXT
-      ========================= */
-      const nextNodeId = getNextNodeId(automation.edges, node.id);
+      // 🔥 FIX START
+      // 🔥 यही latest value है (JAIPUR, DELHI, etc.)
+      const inputId = value;
+
+      const nextNodeId = getNextNodeId(
+        automation.edges,
+        node.id,
+        inputId
+      );
+      // 🔥 FIX END
+
       if (!nextNodeId) return;
 
       await goToNode(nextNodeId);
       return;
+    }
+    case "call_to_action": {
+      if (message.interactive?.button_reply?.id) {
+        const btnId = message.interactive.button_reply.id;
+        const btnTitle = message.interactive.button_reply.title;
+
+        await updateSession({
+          data: {
+            ...session.data,
+            last_button_id: btnId,
+            last_button_title: btnTitle,
+          },
+        });
+      }
+
+      const contact = await Contact.findById(session.contact_id).lean();
+
+      const context = {
+        ...session.data,
+        contact,
+        ...contact?.attributes,
+      };
+
+      const text = interpolate(node.message || "Call us", context);
+
+
+      const url = node.url as string;
+
+      const buttonText = node.button_text || "Call Now";
+
+      await whatsapp.sendUrlButton(from, text, buttonText, url);
+
+      await updateSession({
+        current_node: node.id,
+        waiting_for: null,
+      });
+
+      const nextNodeId = getNextNodeId(automation.edges, node.id);
+      if (nextNodeId) {
+        await goToNode(nextNodeId);
+      }
+
+      return;
+    }
+    case "api_request": {
+      const contact = await Contact.findById(session.contact_id).lean();
+
+      const context = {
+        ...session.data,
+        contact,
+        ...contact?.attributes,
+      };
+
+      const config = node.config || {};
+
+      const url = interpolate(config.url, context);
+      const method = config.method || "GET";
+
+      const headers = JSON.parse(
+        interpolate(JSON.stringify(config.headers || {}), context)
+      );
+
+      const body = JSON.parse(
+        interpolate(JSON.stringify(config.body || {}), context)
+      );
+
+      try {
+
+        const res = await axios({
+          url,
+          method,
+          headers,
+          data: body,
+        });
+
+        const response = res.data;
+
+        let newData: any = { ...session.data };
+
+        // 🔥 MAP RESPONSE
+        for (const key in config.response_map) {
+          const path = config.response_map[key];
+
+          const value = path
+            .split(".")
+            .reduce((obj: any, k: any) => obj?.[k], response);
+
+          newData[key] = value;
+        }
+
+        // ✅ 1. UPDATE SESSION
+        await updateSession({
+          data: newData,
+        });
+
+        // ✅ 2. UPDATE CONTACT (FIXED - SAME PATTERN AS YOUR SYSTEM)
+        const updateObj: any = {};
+
+        for (const key in config.response_map) {
+          updateObj[`attributes.${key}`] = newData[key];
+        }
+
+        await Contact.updateOne(
+          { phone: from, channel_id: automation.channel_id },
+          {
+            $set: updateObj,
+          },
+          { upsert: true }
+        );
+
+        console.log("✅ Contact attributes updated:", updateObj);
+
+        return moveNext();
+      } catch (e) {
+        console.error("❌ API ERROR", e);
+
+        await whatsapp.sendText(
+          from,
+          "⚠️ Something went wrong. Please try again."
+        );
+
+        return;
+      }
     }
 
     default:

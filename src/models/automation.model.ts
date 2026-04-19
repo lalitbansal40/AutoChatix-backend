@@ -19,6 +19,8 @@ export type AutomationNodeType =
   | "ask_input"
   | "carousel"
   | "address_message"
+  | "call_to_action"
+  | "api_request"
   | "set_contact_attribute"
   | "list"
   | "payment_summary";
@@ -38,6 +40,7 @@ export interface AutomationNode {
       description?: string;
     }[];
   }[];
+  url?: string;
 
   button_text?: string;
 
@@ -190,6 +193,18 @@ const AutomationNodeSchema = new Schema<AutomationNode>(
       ],
       required: true,
     },
+    sections: [
+      {
+        title: String,
+        rows: [
+          {
+            id: String,
+            title: String,
+            description: String,
+          },
+        ],
+      },
+    ],
 
     /* ===== COMMON ===== */
     message: String,
@@ -202,6 +217,13 @@ const AutomationNodeSchema = new Schema<AutomationNode>(
         },
       ],
       default: undefined,
+    },
+    url: {
+      type: String,
+    },
+
+    button_text: {
+      type: String,
     },
 
     save_to: String,
