@@ -80,28 +80,43 @@ export const register = async (req: Request, res: Response) => {
    LOGIN
 ===================================================== */
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email }).select("+password");
+    // 🔍 check user
+    const user = await User.findOne({ email }).select("+password");
 
-  if (!user) {
-    return res.status(401).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 🔐 check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // 🎟️ generate token (direct)
+    const token = jwt.sign(
+      {
+        user_id: user._id,
+        account_id: user.account_id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      message: "Login successful",
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({
+      message: "Something went wrong",
+    });
   }
-
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  // 🔥 Generate OTP
-  const otp = generateOTP(email);
-
-  // 📩 Send email
-  await sendOTPEmail(email, otp);
-
-  return res.json({
-    message: "OTP sent to email",
-  });
 };
 
 export const verifyLoginOTP = async (req: Request, res: Response) => {
