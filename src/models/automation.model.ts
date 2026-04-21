@@ -363,7 +363,11 @@ const AutomationSchema = new Schema<AutomationDocument>(
       type: [AutomationEdgeSchema],
       required: true,
     },
-    keywords: [{ type: String }],
+    keywords: {
+      type: [String],
+      default: [],
+      index: true, // 🔥 performance boost
+    },
     account_id: {
       type: Schema.Types.ObjectId,
       ref: "User",

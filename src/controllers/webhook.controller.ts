@@ -81,6 +81,7 @@ export const receiveMessage = async (req: Request, res: Response) => {
       is_active: true,
     });
 
+
     if (!channel) return res.sendStatus(200);
 
     // 👤 CONTACT UPSERT
@@ -105,15 +106,98 @@ export const receiveMessage = async (req: Request, res: Response) => {
     };
 
 
-    const automation = await Automation.findOne({
+    const userText = message.text?.body?.toLowerCase()?.trim() || "";
+
+    let automation = null;
+    // 🔥 KEYWORD MATCH (OVERRIDE)
+    const keywordAutomation = await Automation.findOne({
       channel_id: channel._id,
       trigger: "new_message_received",
       status: "active",
+      keywords: { $in: [userText] },
     });
 
-    if (!automation) {
-      console.log("⚠️ No automation found");
-      return res.sendStatus(200);
+    if (keywordAutomation) {
+      console.log("🔥 Override → reset flow");
+
+      automation = keywordAutomation;
+
+      session.current_node = "start";
+      session.waiting_for = null;
+      session.data = {};
+
+      await Contact.updateOne(
+        { _id: contact._id },
+        {
+          $set: {
+            attributes: {
+              current_node: "start",
+              waiting_for: null,
+              automation_id: keywordAutomation._id,
+            },
+          },
+        }
+      );
+    }
+
+    // 🧠 SESSION CONTINUE
+    if (
+      !automation && // 🔥 IMPORTANT
+      contact.attributes?.current_node &&
+      contact.attributes.current_node !== "start"
+    ) {
+      // 🔥 try continue
+      if (contact.attributes?.automation_id) {
+        automation = await Automation.findById(
+          contact.attributes.automation_id
+        );
+      }
+
+      // 🛟 RECOVERY (VERY IMPORTANT)
+      if (!automation) {
+        console.log("⚠️ Recovering automation...");
+
+        automation = await Automation.findOne({
+          channel_id: channel._id,
+          trigger: "new_message_received",
+          status: "active",
+        });
+      }
+
+      if (!automation) {
+        automation = await Automation.findOne({
+          channel_id: channel._id,
+          trigger: "new_message_received",
+          status: "active",
+          disable_automation: { $ne: true },
+          keywords: { $in: [userText] },
+        });
+
+        // 🔥 STEP 2: EMPTY KEYWORD AUTOMATION
+        if (!automation) {
+          automation = await Automation.findOne({
+            channel_id: channel._id,
+            trigger: "new_message_received",
+            status: "active",
+            disable_automation: { $ne: true },
+            $or: [
+              { keywords: { $exists: false } },
+              { keywords: { $size: 0 } },
+            ],
+          });
+        }
+
+        // 🛟 STEP 3: FALLBACK
+        if (!automation) {
+          automation = await Automation.findOne({
+            channel_id: channel._id,
+            trigger: "new_message_received",
+            status: "active",
+            is_fallback_automation: true,
+          });
+        }
+      }
+
     }
 
     // ✅ HANDLE ASK_INPUT RESPONSE
@@ -146,7 +230,7 @@ export const receiveMessage = async (req: Request, res: Response) => {
 
       // 🔥 MOVE NEXT
       const nextNodeId = getNextNodeId(
-        automation.edges,
+        automation?.edges || [],
         session.current_node
       );
 
@@ -179,7 +263,7 @@ export const receiveMessage = async (req: Request, res: Response) => {
       session.waiting_for = null;
 
       const nextNode = getNextNodeId(
-        automation.edges,
+        automation?.edges || [],
         session.current_node,
         inputId
       );
@@ -196,6 +280,12 @@ export const receiveMessage = async (req: Request, res: Response) => {
       session.data = {};
     }
 
+    if (!automation) {
+      console.log("❌ No automation found");
+      return res.sendStatus(200);
+    }
+
+    session.data.automation_id = automation._id;
     // 🚀 RUN ENGINE
     await runAutomation({
       automation,
