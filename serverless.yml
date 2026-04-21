@@ -42,6 +42,9 @@ provider:
     JWT_SECRET: lalit
     AWS_BUCKET: autochatix-chat-media
     WHATSAPP_BUCKET: autochatix-media-assets
+    META_APP_ID: 1577064810024190
+    META_APP_SECRET: e7908f9cd2bdb67f941f05bc88952e13
+    META_REDIRECT_URI: https://l2hjiwy5dj.execute-api.ap-south-1.amazonaws.com/meta/callback
   deploymentBucket:
     name: my-bot-serverless-deploy-302767540275
     blockPublicAccess: true
