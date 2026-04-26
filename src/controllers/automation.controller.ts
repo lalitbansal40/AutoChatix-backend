@@ -129,3 +129,140 @@ export const getAutomationById = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false });
   }
 };
+
+export const createAutomation = async (req: AuthRequest, res: Response) => {
+  try {
+    const account_id = req.user?.account_id;
+
+    const {
+      name,
+      channel_id,
+      channel_name,
+      nodes,
+      edges,
+      keywords = [],
+    } = req.body;
+
+    // 🔥 BASIC VALIDATION
+    if (!name || !channel_id || !nodes || !edges) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
+
+    // 🔥 CHECK START NODE
+    const hasTrigger = nodes.find((n: any) => n.type === "trigger");
+    if (!hasTrigger) {
+      return res.status(400).json({
+        success: false,
+        message: "Trigger node is required",
+      });
+    }
+
+    // 🔥 SANITIZE NODES (important)
+    const sanitizedNodes = nodes.map((node: any) => ({
+      ...node,
+      id: node.id,
+      type: node.type,
+    }));
+
+    // 🔥 SANITIZE EDGES
+    const sanitizedEdges = edges.map((edge: any) => ({
+      from: edge.from,
+      to: edge.to,
+      condition: edge.condition || "",
+    }));
+
+    const automation = await Automation.create({
+      name,
+      channel_id,
+      channel_name,
+      account_id,
+      nodes: sanitizedNodes,
+      edges: sanitizedEdges,
+      keywords,
+      trigger: "new_message_received",
+      automation_type: "builder",
+    });
+
+    return res.json({
+      success: true,
+      message: "Automation created successfully",
+      data: automation,
+    });
+  } catch (error) {
+    console.error("❌ createAutomation error:", error);
+    return res.status(500).json({ success: false });
+  }
+};
+
+export const updateAutomation = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const account_id = req.user?.account_id;
+
+    const {
+      name,
+      nodes,
+      edges,
+      keywords,
+      status,
+    } = req.body;
+
+    const automation = await Automation.findOne({
+      _id: id,
+      account_id, // 🔥 SECURITY
+    });
+
+    if (!automation) {
+      return res.status(404).json({
+        success: false,
+        message: "Automation not found",
+      });
+    }
+
+    // 🔥 VALIDATION
+    if (nodes) {
+      const hasTrigger = nodes.find((n: any) => n.type === "trigger");
+      if (!hasTrigger) {
+        return res.status(400).json({
+          success: false,
+          message: "Trigger node is required",
+        });
+      }
+    }
+
+    // 🔥 UPDATE FIELDS
+    if (name) automation.name = name;
+    if (status) automation.status = status;
+    if (keywords) automation.keywords = keywords;
+
+    if (nodes) {
+      automation.nodes = nodes.map((n: any) => ({
+        ...n,
+        id: n.id,
+        type: n.type,
+      }));
+    }
+
+    if (edges) {
+      automation.edges = edges.map((e: any) => ({
+        from: e.from,
+        to: e.to,
+        condition: e.condition || "",
+      }));
+    }
+
+    await automation.save();
+
+    return res.json({
+      success: true,
+      message: "Automation updated successfully",
+      data: automation,
+    });
+  } catch (error) {
+    console.error("❌ updateAutomation error:", error);
+    return res.status(500).json({ success: false });
+  }
+};
