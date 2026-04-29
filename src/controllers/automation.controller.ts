@@ -58,9 +58,8 @@ export const toggleAutomationStatus = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      message: `Automation ${
-        automation.status === "active" ? "activated" : "paused"
-      } successfully`,
+      message: `Automation ${automation.status === "active" ? "activated" : "paused"
+        } successfully`,
       data: {
         id: automation._id,
         status: automation.status,
@@ -118,6 +117,20 @@ export const getAutomationById = async (req: AuthRequest, res: Response) => {
         success: false,
         message: "Automation not found",
       });
+    }
+
+    const triggerNode = automation.nodes?.find(
+      (n: any) => n.type === "trigger"
+    );
+
+    if (triggerNode) {
+      // 🔥 INJECT BACK INTO NODE
+      triggerNode.triggerType =
+        automation.keywords && automation.keywords.length > 0
+          ? "keyword"
+          : "all";
+
+      triggerNode.keywords = automation.keywords || [];
     }
 
     return res.json({
@@ -202,17 +215,11 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const account_id = req.user?.account_id;
 
-    const {
-      name,
-      nodes,
-      edges,
-      keywords,
-      status,
-    } = req.body;
+    const { name, nodes, edges, status } = req.body;
 
     const automation = await Automation.findOne({
       _id: id,
-      account_id, // 🔥 SECURITY
+      account_id,
     });
 
     if (!automation) {
@@ -222,21 +229,43 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // 🔥 VALIDATION
+    /* =========================
+       VALIDATION
+    ========================= */
+
     if (nodes) {
-      const hasTrigger = nodes.find((n: any) => n.type === "trigger");
-      if (!hasTrigger) {
+      const triggerNode = nodes.find((n: any) => n.type === "trigger");
+
+      if (!triggerNode) {
         return res.status(400).json({
           success: false,
           message: "Trigger node is required",
         });
       }
+
+      // ✅ SAVE KEYWORDS (MAIN FIX)
+      automation.keywords =
+        triggerNode.triggerType === "keyword"
+          ? triggerNode.keywords || []
+          : [];
+
+      automation.nodes = nodes.map((n: any) => ({
+        ...n,
+        id: n.id,
+        type: n.type,
+      }));
     }
 
-    // 🔥 UPDATE FIELDS
-    if (name) automation.name = name;
-    if (status) automation.status = status;
-    if (keywords) automation.keywords = keywords;
+    /* =========================
+       UPDATE BASIC FIELDS
+    ========================= */
+
+    if (name !== undefined) automation.name = name;
+    if (status !== undefined) automation.status = status;
+
+    /* =========================
+       SAVE NODES
+    ========================= */
 
     if (nodes) {
       automation.nodes = nodes.map((n: any) => ({
@@ -245,6 +274,10 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
         type: n.type,
       }));
     }
+
+    /* =========================
+       SAVE EDGES
+    ========================= */
 
     if (edges) {
       automation.edges = edges.map((e: any) => ({
@@ -261,8 +294,12 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
       message: "Automation updated successfully",
       data: automation,
     });
+
   } catch (error) {
     console.error("❌ updateAutomation error:", error);
-    return res.status(500).json({ success: false });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
