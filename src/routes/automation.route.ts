@@ -36,7 +36,7 @@ router.put(
 );
 
 // ▶️ ⏸ TOGGLE
-router.patch(
+router.put(
   "/:id/toggle",
   authMiddleware,
   subscriptionGuard,
