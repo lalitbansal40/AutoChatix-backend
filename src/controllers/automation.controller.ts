@@ -42,8 +42,11 @@ export const toggleAutomationStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    console.log("👉 TOGGLE ID:", id);
+
     const automation = await Automation.findById(id);
 
+    // ✅ MOST IMPORTANT FIX
     if (!automation) {
       return res.status(404).json({
         success: false,
@@ -51,23 +54,24 @@ export const toggleAutomationStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // 🔥 toggle status
-    automation.status = automation.status === "active" ? "paused" : "active";
+    automation.status =
+      automation.status === "active" ? "paused" : "active";
 
     await automation.save();
 
     return res.json({
       success: true,
-      message: `Automation ${automation.status === "active" ? "activated" : "paused"
-        } successfully`,
-      data: {
-        id: automation._id,
-        status: automation.status,
-      },
+      data: automation,
     });
+
   } catch (error) {
-    console.error("❌ toggleAutomationStatus error:", error);
-    return res.status(500).json({ success: false });
+    console.error("❌ TOGGLE ERROR:", error);
+
+    // ✅ ALWAYS RETURN RESPONSE
+    return res.status(500).json({
+      success: false,
+      message: "Internal error",
+    });
   }
 };
 
