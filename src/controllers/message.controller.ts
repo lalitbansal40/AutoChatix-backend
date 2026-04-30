@@ -13,23 +13,46 @@ import heicConvert from "heic-convert";
    Attach Reply Messages
 ================================ */
 async function attachReplyMessages(messages: any[]) {
-  const replyIds = messages.filter((m) => m.reply_to).map((m) => m.reply_to);
+  // 🔥 correct reply ids extraction
+  const replyIds = messages
+    .map((m) => m?.payload?.context?.id)
+    .filter(Boolean);
 
   if (replyIds.length === 0) return messages;
 
+  // 🔥 fetch replies
   const repliedMessages = await Message.find({
     wa_message_id: { $in: replyIds },
   }).lean();
 
+  // 🔥 map
   const replyMap: any = {};
-
   repliedMessages.forEach((msg) => {
     replyMap[msg.wa_message_id] = msg;
   });
 
+  // 🔥 attach + normalize text
   messages.forEach((m: any) => {
-    if (m.reply_to) {
-      m.reply_message = replyMap[m.reply_to] || null;
+    const replyId = m?.payload?.context?.id;
+
+    if (replyId && replyMap[replyId]) {
+      const repliedMsg = replyMap[replyId];
+
+      m.reply_message = {
+        _id: repliedMsg._id,
+        type: repliedMsg.type,
+        text:
+          repliedMsg.text ||
+          repliedMsg?.payload?.text?.body ||
+          repliedMsg?.payload?.bodyText ||
+          repliedMsg?.payload?.caption ||
+          repliedMsg?.payload?.interactive?.button_reply?.title ||
+          repliedMsg?.payload?.interactive?.list_reply?.title ||
+          "Message",
+        payload: repliedMsg.payload,
+      };
+    } else {
+      m.reply_message = null;
     }
   });
 
@@ -44,7 +67,7 @@ export const getMessagesByContact = async (req: Request, res: Response) => {
     const { contactId } = req.params;
     const { cursor, limit = 30 } = req.query;
 
-    // Validate contactId
+    // ✅ Validate contactId
     if (!contactId || !mongoose.Types.ObjectId.isValid(contactId)) {
       return res.status(400).json({
         success: false,
@@ -56,29 +79,99 @@ export const getMessagesByContact = async (req: Request, res: Response) => {
       contact_id: new mongoose.Types.ObjectId(contactId),
     };
 
-    // Cursor pagination
+    // ✅ Cursor pagination
     if (cursor) {
       query.createdAt = {
         $lt: new Date(cursor as string),
       };
     }
 
-    // Fetch messages
+    // =========================
+    // 🔥 1. FETCH MESSAGES
+    // =========================
     let messages = await Message.find(query)
       .sort({ createdAt: -1 })
       .limit(Number(limit))
       .lean();
 
-    // Attach reply messages
-    messages = await attachReplyMessages(messages);
+    // =========================
+    // 🔥 2. NORMALIZE TEXT (CRITICAL FIX)
+    // =========================
+    messages = messages.map((msg: any) => ({
+      ...msg,
+      text:
+        msg.text ||
+        msg?.payload?.text?.body ||
+        msg?.payload?.bodyText ||
+        msg?.payload?.caption ||
+        msg?.payload?.interactive?.button_reply?.title ||
+        msg?.payload?.interactive?.list_reply?.title ||
+        msg?.payload?.text ||
+        "",
+    }));
 
+    // =========================
+    // 🔥 3. ATTACH REPLY MESSAGES (FIXED)
+    // =========================
+    const replyIds = messages
+      .map((m: any) => m?.payload?.context?.id)
+      .filter(Boolean);
+
+    if (replyIds.length > 0) {
+      const repliedMessages = await Message.find({
+        wa_message_id: { $in: replyIds },
+        contact_id: new mongoose.Types.ObjectId(contactId), // 🔥 important
+      }).lean();
+
+      const replyMap: any = {};
+      repliedMessages.forEach((msg: any) => {
+        replyMap[msg.wa_message_id] = msg;
+      });
+
+      messages = messages.map((msg: any) => {
+        const replyId = msg?.payload?.context?.id;
+
+        if (replyId && replyMap[replyId]) {
+          const repliedMsg = replyMap[replyId];
+
+          return {
+            ...msg,
+            reply_message: {
+              _id: repliedMsg._id,
+              type: repliedMsg.type,
+              text:
+                repliedMsg.text ||
+                repliedMsg?.payload?.text?.body ||
+                repliedMsg?.payload?.bodyText ||
+                repliedMsg?.payload?.caption ||
+                repliedMsg?.payload?.interactive?.button_reply?.title ||
+                repliedMsg?.payload?.interactive?.list_reply?.title ||
+                "Message",
+              payload: repliedMsg.payload,
+            },
+          };
+        }
+
+        return {
+          ...msg,
+          reply_message: null,
+        };
+      });
+    }
+
+    // =========================
+    // 🔥 4. RESPONSE
+    // =========================
     return res.status(200).json({
       success: true,
       count: messages.length,
       nextCursor:
-        messages.length > 0 ? messages[messages.length - 1].createdAt : null,
+        messages.length > 0
+          ? messages[messages.length - 1].createdAt
+          : null,
       data: messages.reverse(), // oldest → newest
     });
+
   } catch (error: any) {
     console.error("Get Messages By Contact Error:", error);
 

@@ -171,7 +171,12 @@ export interface AutomationDocument extends Document {
   name: string;
   channel_name: string;
 
-  trigger: "new_message_received";
+  trigger:
+  | "new_message_received"
+  | "outgoing_message"
+  | "webhook_received"
+  | "call_completed"
+  | "call_missed";
   status: "active" | "paused";
   disable_automation: boolean;
 
@@ -379,7 +384,13 @@ const AutomationSchema = new Schema<AutomationDocument>(
 
     trigger: {
       type: String,
-      enum: ["new_message_received"],
+      enum: [
+        "new_message_received",
+        "outgoing_message",
+        "webhook_received",
+        "call_completed",
+        "call_missed",
+      ],
       required: true,
     },
 

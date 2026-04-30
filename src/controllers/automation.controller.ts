@@ -158,9 +158,12 @@ export const createAutomation = async (req: AuthRequest, res: Response) => {
       nodes,
       edges,
       keywords = [],
+      trigger, // 🔥 NEW
     } = req.body;
 
-    // 🔥 BASIC VALIDATION
+    // =========================
+    // 🔒 BASIC VALIDATION
+    // =========================
     if (!name || !channel_id || !nodes || !edges) {
       return res.status(400).json({
         success: false,
@@ -168,8 +171,43 @@ export const createAutomation = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // 🔥 CHECK START NODE
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nodes must be a non-empty array",
+      });
+    }
+
+    if (!Array.isArray(edges)) {
+      return res.status(400).json({
+        success: false,
+        message: "Edges must be an array",
+      });
+    }
+
+    // =========================
+    // 🔥 TRIGGER VALIDATION
+    // =========================
+    const allowedTriggers = [
+      "new_message_received",
+      "outgoing_message",
+      "webhook_received",
+      "call_completed",
+      "call_missed",
+    ];
+
+    if (!trigger || !allowedTriggers.includes(trigger)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or missing trigger",
+      });
+    }
+
+    // =========================
+    // 🔥 CHECK TRIGGER NODE
+    // =========================
     const hasTrigger = nodes.find((n: any) => n.type === "trigger");
+
     if (!hasTrigger) {
       return res.status(400).json({
         success: false,
@@ -177,20 +215,28 @@ export const createAutomation = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // 🔥 SANITIZE NODES (important)
+    // =========================
+    // 🔥 SANITIZE NODES
+    // =========================
     const sanitizedNodes = nodes.map((node: any) => ({
       ...node,
       id: node.id,
       type: node.type,
+      position: node.position || { x: 0, y: 0 }
     }));
 
+    // =========================
     // 🔥 SANITIZE EDGES
+    // =========================
     const sanitizedEdges = edges.map((edge: any) => ({
       from: edge.from,
       to: edge.to,
       condition: edge.condition || "",
     }));
 
+    // =========================
+    // 🔥 CREATE AUTOMATION
+    // =========================
     const automation = await Automation.create({
       name,
       channel_id,
@@ -199,18 +245,29 @@ export const createAutomation = async (req: AuthRequest, res: Response) => {
       nodes: sanitizedNodes,
       edges: sanitizedEdges,
       keywords,
-      trigger: "new_message_received",
+      trigger, // ✅ FIXED (dynamic)
       automation_type: "builder",
+      status: "active",
+      disable_automation: false,
+      is_fallback_automation: false,
     });
 
-    return res.json({
+    // =========================
+    // ✅ RESPONSE
+    // =========================
+    return res.status(200).json({
       success: true,
       message: "Automation created successfully",
       data: automation,
     });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("❌ createAutomation error:", error);
-    return res.status(500).json({ success: false });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
 
