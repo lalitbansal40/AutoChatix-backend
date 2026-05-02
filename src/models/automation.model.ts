@@ -15,7 +15,6 @@ export type AutomationNodeType =
   | "google_sheet"
   | "razorpay_payment"
   | "borzo_delivery"
-  | "razorpay_payment"
   | "ask_input"
   | "carousel"
   | "address_message"
@@ -24,7 +23,9 @@ export type AutomationNodeType =
   | "send_template"
   | "set_contact_attribute"
   | "list"
-  | "payment_summary";
+  | "payment_summary"
+  | "product_list"
+  | "single_product";
 
 /* ---------- NODE ---------- */
 export interface AutomationNode {
@@ -37,6 +38,33 @@ export interface AutomationNode {
     x: number;
     y: number;
   };
+  /* ===== CAROUSEL ===== */
+  cards?: {
+    id: string;
+    body: string;
+    media?: {
+      type?: "image" | "video";
+      url: string;
+      name?: string;
+    };
+    buttons?: {
+      id: string;
+      title: string;
+      type: string;
+      nextNode?: string;
+    }[];
+  }[];
+
+  flows?: {
+    id: string;
+    name: string;
+    status: string;
+  }[];
+
+  messageType?: string;
+  list?: any;
+  label?: string;
+  _updatedAt?: number;
   sections?: {
     title: string;
     rows: {
@@ -154,6 +182,13 @@ export interface AutomationNode {
   order_id?: string; // used for update / cancel / track
 
   /* =========================
+     PRODUCT CATALOG
+  ========================= */
+  catalog_id?: string;
+  product_retailer_id?: string;
+  footer?: string;
+
+  /* =========================
      FUTURE / CUSTOM
   ========================= */
   config?: Record<string, any>; // shiprocket, webhook, email, sms, etc.
@@ -198,13 +233,59 @@ export interface AutomationDocument extends Document {
 ========================= */
 
 /* ---------- NODE SCHEMA ---------- */
-const AutomationNodeSchema = new Schema<AutomationNode>(
+const AutomationNodeSchema = new Schema<any>(
   {
     id: { type: String, required: true },
     position: {
       x: { type: Number, default: 0 },
       y: { type: Number, default: 0 },
     },
+
+    /* ===== CAROUSEL ===== */
+    cards: {
+      type: [
+        {
+          id: String,
+          body: String,
+          media: {
+            type: {
+              type: String,
+              enum: ["image", "video"],
+            },
+            url: String,
+            name: String,
+          },
+          buttons: {
+            type: [
+              {
+                id: String,
+                title: String,
+                type: String,
+                nextNode: String,
+              },
+            ],
+            default: undefined,
+          },
+        },
+      ],
+      default: undefined,
+    },
+
+    flows: {
+      type: [
+        {
+          id: String,
+          name: String,
+          status: String,
+        },
+      ],
+      default: undefined,
+    },
+
+    messageType: String,
+    list: Schema.Types.Mixed,
+    label: String,
+    _updatedAt: Number,
 
     type: {
       type: String,
@@ -227,7 +308,9 @@ const AutomationNodeSchema = new Schema<AutomationNode>(
         "set_contact_attribute",
         "list",
         "payment_summary",
-        "ask_input"
+        "ask_input",
+        "product_list",
+        "single_product",
       ],
       required: true,
     },
@@ -277,6 +360,8 @@ const AutomationNodeSchema = new Schema<AutomationNode>(
         {
           id: { type: String, required: true },
           title: { type: String, required: true },
+          type: { type: String },        // 🔥 ADD THIS
+          nextNode: { type: String },    // 🔥 ADD THIS
         },
       ],
       default: undefined,
@@ -359,6 +444,11 @@ const AutomationNodeSchema = new Schema<AutomationNode>(
       ],
       default: undefined, // 🔥 IMPORTANT
     },
+
+    /* ===== PRODUCT CATALOG ===== */
+    catalog_id: String,
+    product_retailer_id: String,
+    footer: String,
 
     /* ===== FUTURE ===== */
     config: Schema.Types.Mixed,

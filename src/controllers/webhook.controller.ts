@@ -9,7 +9,47 @@ import Contact from "../models/contact.model";
 import Message from "../models/message.model";
 import axios from "axios";
 import { getNextNodeId } from "../engine/grapht";
+import { uploadFromUrlToS3 } from "../services/s3v2.service";
 dotenv.config({ path: path.join(".env") });
+
+/* =====================================================
+   PROFILE PICTURE — best-effort, never throws
+===================================================== */
+const fetchAndSaveProfilePic = async (
+  phoneNumberId: string,
+  accessToken: string,
+  waId: string,
+  contactId: any,
+) => {
+  try {
+    // Meta WhatsApp Cloud API: get contact profile picture via contacts endpoint
+    const res = await axios.get(
+      `https://graph.facebook.com/v20.0/${phoneNumberId}/contacts`,
+      {
+        params: {
+          contact_ids: JSON.stringify([waId]),
+          fields: "profile_picture_url",
+        },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+
+    const picUrl: string | undefined =
+      res.data?.data?.[0]?.profile_picture_url;
+
+    if (!picUrl) return;
+
+    // Download and re-upload to S3 so the URL is always public
+    const s3Url = await uploadFromUrlToS3(picUrl, "image/jpeg");
+
+    await Contact.updateOne(
+      { _id: contactId },
+      { $set: { profile_picture: s3Url } },
+    );
+  } catch (_) {
+    // Silently skip — profile picture is optional
+  }
+};
 
 export const verifyWebhook = async (
   req: Request,
@@ -90,11 +130,22 @@ export const receiveMessage = async (req: Request, res: Response) => {
     if (!channel) return res.sendStatus(200);
 
     // 👤 CONTACT UPSERT
+    const waId: string = value.contacts?.[0]?.wa_id || from;
     const contact = await Contact.findOneAndUpdate(
       { channel_id: channel._id, phone: from },
       { $set: { name: value.contacts?.[0]?.profile?.name } },
       { upsert: true, new: true }
     );
+
+    // 📸 PROFILE PICTURE — fetch only when not yet saved
+    if (!contact.profile_picture) {
+      fetchAndSaveProfilePic(
+        phoneNumberId,
+        channel.access_token,
+        waId,
+        contact._id,
+      );
+    }
 
     // ✅ ADD THIS HERE (RIGHT AFTER CONTACT UPSERT)
     if (!contact.attributes) {

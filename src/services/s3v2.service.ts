@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 
 const s3 = new S3Client({});
 
@@ -20,8 +21,18 @@ export const uploadToS3V2 = async (buffer: Buffer, mimeType: string) => {
   console.log("response :: ",JSON.stringify(reponse))
 
   console.log("{process.env.WHATSAPP_BUCKET",process.env.WHATSAPP_BUCKET)
+  console.log(`https://${process.env.WHATSAPP_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`)
 
   return `https://${process.env.WHATSAPP_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+};
+
+export const uploadFromUrlToS3 = async (
+  url: string,
+  mimeType: string = "image/jpeg",
+): Promise<string> => {
+  const res = await axios.get(url, { responseType: "arraybuffer" });
+  const buffer = Buffer.from(res.data);
+  return uploadToS3V2(buffer, mimeType);
 };
 
 const getExtensionFromMime = (mimeType: string) => {

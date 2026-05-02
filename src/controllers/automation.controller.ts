@@ -310,11 +310,68 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
           ? triggerNode.keywords || []
           : [];
 
-      automation.nodes = nodes.map((n: any) => ({
-        ...n,
-        id: n.id,
-        type: n.type,
-      }));
+      const sanitizeNodes = (nodes: any[]) => {
+        return JSON.parse(JSON.stringify(nodes)).map((n: any) => {
+
+          // 🔥 FIX NODE LEVEL BUTTONS
+          if (typeof n.buttons === "string") {
+            n.buttons = [];
+          }
+          if (!Array.isArray(n.buttons)) {
+            n.buttons = [];
+          }
+
+          // 🔥 FIX CARDS
+          if (Array.isArray(n.cards)) {
+            n.cards = n.cards.map((card: any) => {
+              let buttons = card.buttons;
+
+              if (typeof buttons === "string") {
+                console.log("❌ FIXING STRING BUTTONS (CARD)");
+                buttons = [];
+              }
+
+              if (!Array.isArray(buttons)) {
+                buttons = [];
+              }
+
+              return {
+                ...card,
+                buttons,
+              };
+            });
+          }
+
+          return n;
+        });
+      };
+
+      const cleanNodes = sanitizeNodes(nodes);
+
+      await Automation.updateOne(
+        { _id: id, account_id },
+        {
+          $set: {
+            nodes: cleanNodes,
+            ...(name !== undefined && { name }),
+            ...(status !== undefined && { status }),
+            ...(edges && {
+              edges: edges.map((e: any) => ({
+                from: e.from,
+                to: e.to,
+                condition: e.condition || "",
+              })),
+            }),
+            keywords:
+              triggerNode.triggerType === "keyword"
+                ? triggerNode.keywords || []
+                : [],
+          },
+        },
+        { strict: false } // 🔥 VERY IMPORTANT
+      );
+
+
     }
 
     /* =========================
@@ -323,18 +380,6 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
 
     if (name !== undefined) automation.name = name;
     if (status !== undefined) automation.status = status;
-
-    /* =========================
-       SAVE NODES
-    ========================= */
-
-    if (nodes) {
-      automation.nodes = nodes.map((n: any) => ({
-        ...n,
-        id: n.id,
-        type: n.type,
-      }));
-    }
 
     /* =========================
        SAVE EDGES
@@ -348,7 +393,6 @@ export const updateAutomation = async (req: AuthRequest, res: Response) => {
       }));
     }
 
-    await automation.save();
 
     return res.json({
       success: true,

@@ -1116,6 +1116,54 @@ export const executeNode = async ({
       }
     }
 
+    case "product_list": {
+      if (!node.catalog_id) {
+        console.warn("❌ product_list: catalog_id missing");
+        return;
+      }
+
+      // When a user taps a product and replies, the message comes back as text/order.
+      // For now: send the product list and wait (no waiting_for state needed).
+      const contact = await Contact.findById(session.contact_id).lean();
+      const context = { ...session.data, contact, ...contact?.attributes };
+
+      const sections = (node.sections || []).map((s: any) => ({
+        title: s.title,
+        productRetailerIds: (s.rows || s.product_items || []).map(
+          (r: any) => r.product_retailer_id || r.id,
+        ),
+      }));
+
+      await whatsapp.sendProductList(from, {
+        catalogId: node.catalog_id,
+        header: node.header,
+        body: interpolate(node.body || "Check out our products", context),
+        footer: node.footer,
+        sections,
+      });
+
+      return moveNext();
+    }
+
+    case "single_product": {
+      if (!node.catalog_id || !node.product_retailer_id) {
+        console.warn("❌ single_product: catalog_id or product_retailer_id missing");
+        return;
+      }
+
+      const contact = await Contact.findById(session.contact_id).lean();
+      const context = { ...session.data, contact, ...contact?.attributes };
+
+      await whatsapp.sendSingleProduct(from, {
+        catalogId: node.catalog_id,
+        productRetailerId: interpolate(node.product_retailer_id, context),
+        body: node.body ? interpolate(node.body, context) : undefined,
+        footer: node.footer,
+      });
+
+      return moveNext();
+    }
+
     default:
       console.warn("⚠️ Unsupported node type:", node.type);
       return;

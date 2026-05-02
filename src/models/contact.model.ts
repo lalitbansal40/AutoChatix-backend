@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface ContactDocument extends Document {
   phone: string;
   name?: string;
+  profile_picture?: string;
   channel_id: mongoose.Types.ObjectId;
   last_message_id: mongoose.Types.ObjectId;
 
@@ -23,6 +24,7 @@ const ContactSchema = new Schema<ContactDocument>(
   {
     phone: { type: String, required: true },
     name: { type: String },
+    profile_picture: { type: String },
 
     channel_id: {
       type: Schema.Types.ObjectId,

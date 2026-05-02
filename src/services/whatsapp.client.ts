@@ -90,6 +90,30 @@ export interface WhatsAppClient {
     buttonText: string,
     url: string,
   ): Promise<void>;
+
+  sendProductList(
+    to: string,
+    payload: {
+      catalogId: string;
+      header?: string;
+      body: string;
+      footer?: string;
+      sections: {
+        title: string;
+        productRetailerIds: string[];
+      }[];
+    },
+  ): Promise<void>;
+
+  sendSingleProduct(
+    to: string,
+    payload: {
+      catalogId: string;
+      productRetailerId: string;
+      body?: string;
+      footer?: string;
+    },
+  ): Promise<void>;
 }
 
 export const createWhatsAppClient = (
@@ -970,6 +994,98 @@ export const createWhatsAppClient = (
         );
 
         logError("sendUrlButton", e);
+      }
+    },
+
+    async sendProductList(to, payload) {
+      const msg = await Message.create({
+        channel_id: channel._id,
+        contact_id: contact._id,
+        direction: "OUT",
+        type: "product_list",
+        status: "PENDING",
+        payload,
+        is_read: true,
+      });
+
+      try {
+        const res = await api.post("/messages", {
+          messaging_product: "whatsapp",
+          to,
+          type: "interactive",
+          interactive: {
+            type: "product_list",
+            header: payload.header
+              ? { type: "text", text: payload.header }
+              : undefined,
+            body: { text: payload.body },
+            footer: payload.footer ? { text: payload.footer } : undefined,
+            action: {
+              catalog_id: payload.catalogId,
+              sections: payload.sections.map((s) => ({
+                title: s.title,
+                product_items: s.productRetailerIds.map((id) => ({
+                  product_retailer_id: id,
+                })),
+              })),
+            },
+          },
+        });
+
+        const waId = res.data?.messages?.[0]?.id;
+        await Message.updateOne({ _id: msg._id }, { status: "SENT", wa_message_id: waId });
+        await Contact.updateOne(
+          { _id: contact._id },
+          { $set: { last_message_id: msg._id, last_message_at: new Date() } },
+        );
+      } catch (e: any) {
+        await Message.updateOne(
+          { _id: msg._id },
+          { status: "FAILED", error: JSON.stringify(e?.response?.data || e?.message || "Unknown error") },
+        );
+        logError("sendProductList", e);
+      }
+    },
+
+    async sendSingleProduct(to, payload) {
+      const msg = await Message.create({
+        channel_id: channel._id,
+        contact_id: contact._id,
+        direction: "OUT",
+        type: "single_product",
+        status: "PENDING",
+        payload,
+        is_read: true,
+      });
+
+      try {
+        const res = await api.post("/messages", {
+          messaging_product: "whatsapp",
+          to,
+          type: "interactive",
+          interactive: {
+            type: "product",
+            body: payload.body ? { text: payload.body } : undefined,
+            footer: payload.footer ? { text: payload.footer } : undefined,
+            action: {
+              catalog_id: payload.catalogId,
+              product_retailer_id: payload.productRetailerId,
+            },
+          },
+        });
+
+        const waId = res.data?.messages?.[0]?.id;
+        await Message.updateOne({ _id: msg._id }, { status: "SENT", wa_message_id: waId });
+        await Contact.updateOne(
+          { _id: contact._id },
+          { $set: { last_message_id: msg._id, last_message_at: new Date() } },
+        );
+      } catch (e: any) {
+        await Message.updateOne(
+          { _id: msg._id },
+          { status: "FAILED", error: JSON.stringify(e?.response?.data || e?.message || "Unknown error") },
+        );
+        logError("sendSingleProduct", e);
       }
     },
   };
