@@ -25,15 +25,15 @@ export const handler = async (event: any) => {
 
       // serverless-offline uses http://localhost:3001, AWS uses https://domain
       const isOffline = process.env.IS_OFFLINE === "true";
-      const callbackUrl = isOffline
-        ? `http://localhost:${process.env.OFFLINE_WS_PORT || 3001}`
-        : `https://${event.requestContext.domainName}`;
+     const callbackUrl = isOffline
+  ? `http://localhost:${process.env.OFFLINE_WS_PORT || 3001}`
+  : `https://${event.requestContext.domainName}/${event.requestContext.stage}`;
 
       await WsConnection.create({ connectionId, accountId, callbackUrl });
 
       return { statusCode: 200, body: "Connected" };
     }
-
+    
     if (routeKey === "$disconnect") {
       await WsConnection.deleteOne({ connectionId });
       return { statusCode: 200, body: "Disconnected" };

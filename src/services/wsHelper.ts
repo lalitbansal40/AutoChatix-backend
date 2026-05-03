@@ -23,7 +23,7 @@ export const pushToAccount = async (accountId: string, data: any) => {
     await Promise.allSettled(
       connections.map(async (conn) => {
         const client = new ApiGatewayManagementApiClient({
-          endpoint: conn.callbackUrl,
+          endpoint: "https://obi6huq5dk.execute-api.ap-south-1.amazonaws.com/prod",
           region: "ap-south-1",
         });
 
