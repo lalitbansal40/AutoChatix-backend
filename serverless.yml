@@ -23,10 +23,13 @@ provider:
   httpApi:
     cors:
       allowedOrigins:
-        - "*"
+        - "https://app.autochatix.com"
+        - "https://www.autochatix.com"
+        - "http://localhost:3000"
       allowedHeaders:
         - Content-Type
         - Authorization
+        - Access-Control-Request-Headers
       allowedMethods:
         - GET
         - POST
@@ -48,7 +51,7 @@ provider:
     WHATSAPP_BUCKET: autochatix-media-assets
     META_APP_ID: 1577064810024190
     META_APP_SECRET: e7908f9cd2bdb67f941f05bc88952e13
-    META_REDIRECT_URI: https://l2hjiwy5dj.execute-api.ap-south-1.amazonaws.com/meta/callback
+    META_REDIRECT_URI: https://l2hjiwy5dj.execute-api.ap-south-1.amazonaws.com/prod/meta/callback
   deploymentBucket:
     name: my-bot-serverless-deploy-302767540275
     blockPublicAccess: true
