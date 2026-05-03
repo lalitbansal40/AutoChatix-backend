@@ -15,6 +15,8 @@ export interface ContactDocument extends Document {
     default: {};
   };
 
+  is_processing: boolean;
+
   createdAt: Date;
   updatedAt: Date;
   unread_count: number;
@@ -47,6 +49,8 @@ const ContactSchema = new Schema<ContactDocument>(
       type: Schema.Types.Mixed,
       default: {},
     },
+
+    is_processing: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

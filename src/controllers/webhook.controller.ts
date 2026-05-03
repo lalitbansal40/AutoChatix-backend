@@ -379,11 +379,18 @@ export const receiveMessage = async (req: Request, res: Response) => {
       return res.sendStatus(200);
     }
 
-    session.data.automation_id = automation._id;
-    await Contact.updateOne(
-      { _id: contact._id },
-      { $set: { "attributes.automation_id": automation._id } }
+    // ✅ ATOMIC LOCK — only one automation per contact at a time
+    const lockAcquired = await Contact.findOneAndUpdate(
+      { _id: contact._id, is_processing: { $ne: true } },
+      { $set: { is_processing: true, "attributes.automation_id": automation._id } },
     );
+
+    if (!lockAcquired) {
+      console.log("⏳ Contact already processing, skipping");
+      return res.sendStatus(200);
+    }
+
+    session.data.automation_id = automation._id;
 
     pushToAccount(channel.account_id.toString(), {
       type: "typing_indicator",
@@ -422,6 +429,8 @@ export const receiveMessage = async (req: Request, res: Response) => {
         },
       });
     } finally {
+      // Always release lock
+      await Contact.updateOne({ _id: contact._id }, { $set: { is_processing: false } });
       pushToAccount(channel.account_id.toString(), {
         type: "typing_indicator",
         contact_id: contact._id,
